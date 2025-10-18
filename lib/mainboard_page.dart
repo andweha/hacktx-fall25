@@ -10,7 +10,6 @@ class MainBoardPage extends StatefulWidget {
 }
 
 class _MainBoardPageState extends State<MainBoardPage> {
-  // Your dataset kept as-is
   final List<String> taskDataset = [
     'Wake up before 7 AM and get out of bed immediately',
     'Meditate in silence for 15 minutes',
@@ -70,11 +69,9 @@ class _MainBoardPageState extends State<MainBoardPage> {
   @override
   void initState() {
     super.initState();
-    // seed a 3x3 board in Firestore if missing
-    BoardService.ensureSeed();
+    BoardService.ensureSeed(); // seed 3x3 if missing
   }
 
-  // Convert Firestore 'cells' array -> UI tasks
   List<Task> _tasksFrom(List rawCells) {
     return List.generate(9, (i) {
       final m = Map<String, dynamic>.from(rawCells[i]);
@@ -84,7 +81,6 @@ class _MainBoardPageState extends State<MainBoardPage> {
     });
   }
 
-  // Pure checker (no setState here)
   bool _isBoardCompleted(List<Task> tasks) {
     final grid = [
       tasks.sublist(0, 3),
@@ -97,9 +93,7 @@ class _MainBoardPageState extends State<MainBoardPage> {
       if (row.every((t) => t.completed)) won = true;
     }
     for (int c = 0; c < 3; c++) {
-      if (grid[0][c].completed && grid[1][c].completed && grid[2][c].completed) {
-        won = true;
-      }
+      if (grid[0][c].completed && grid[1][c].completed && grid[2][c].completed) won = true;
     }
     if ((grid[0][0].completed && grid[1][1].completed && grid[2][2].completed) ||
         (grid[0][2].completed && grid[1][1].completed && grid[2][0].completed)) {
@@ -132,7 +126,7 @@ class _MainBoardPageState extends State<MainBoardPage> {
                 const SizedBox(height: 10),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    await BoardService.toggle(index, rawCells); // writes to Firestore
+                    await BoardService.toggle(index, rawCells); // write to Firestore
                     if (mounted) Navigator.pop(context);
                   },
                   icon: Icon(done ? Icons.undo : Icons.check_circle_outline),
@@ -202,16 +196,14 @@ class _MainBoardPageState extends State<MainBoardPage> {
       stream: BoardService.stream(),
       builder: (context, snap) {
         if (!snap.hasData || !snap.data!.exists) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
         final cells = List<Map<String, dynamic>>.from(snap.data!.data()!['cells']);
         final tasks = _tasksFrom(cells);
         final isCompleted = _isBoardCompleted(tasks);
 
-        // Update boardCompleted AFTER the frame if it changed
+        // reflect completion state after build, if changed
         if (isCompleted != boardCompleted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
@@ -220,52 +212,77 @@ class _MainBoardPageState extends State<MainBoardPage> {
           });
         }
 
+        // ---- Responsive grid that fits all 9 tiles on screen ----
+        const double pad = 12;                // outer padding
+        const double spacing = 8;             // tile spacing
+        const int cols = 3;                   // 3x3 board
+        const int rows = 3;
+
         return Scaffold(
           backgroundColor: boardCompleted ? Colors.green.shade100 : Colors.grey.shade100,
           appBar: AppBar(
             backgroundColor: boardCompleted ? Colors.green : Colors.blueAccent,
-            title: Text(
-              boardCompleted ? 'Tasks Done Today!' : 'Main Board',
-              style: const TextStyle(color: Colors.white),
-            ),
+            title: Text(boardCompleted ? 'Tasks Done Today!' : 'Main Board',
+                style: const TextStyle(color: Colors.white)),
             centerTitle: true,
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: GridView.builder(
-              itemCount: tasks.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemBuilder: (context, index) {
-                final t = tasks[index];
-                return GestureDetector(
-                  onTap: () => _showTaskDialog(index, cells),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    decoration: BoxDecoration(
-                      color: t.completed ? Colors.green.shade300 : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2))],
-                    ),
-                    padding: const EdgeInsets.all(8),
-                    child: Center(
-                      child: Text(
-                        t.title,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          decoration: t.completed ? TextDecoration.lineThrough : null,
-                          color: t.completed ? Colors.white : Colors.black87,
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              // available width/height for the grid (inside padding)
+              final gridW = constraints.maxWidth - pad * 2;
+              final gridH = constraints.maxHeight - pad * 2;
+
+              // compute tile sizes so 3 rows & 3 cols fit exactly
+              final tileW = (gridW - spacing * (cols - 1)) / cols;
+              final tileH = (gridH - spacing * (rows - 1)) / rows;
+
+              // GridView expects width/height ratio
+              final childAspectRatio = (tileW > 0 && tileH > 0)
+                  ? tileW / tileH
+                  : 1.0;
+
+              return Padding(
+                padding: const EdgeInsets.all(pad),
+                child: GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(), // everything fits – no scroll
+                  itemCount: tasks.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: spacing,
+                    mainAxisSpacing: spacing,
+                    childAspectRatio: childAspectRatio,
+                  ),
+                  itemBuilder: (context, index) {
+                    final t = tasks[index];
+                    return GestureDetector(
+                      onTap: () => _showTaskDialog(index, cells),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        decoration: BoxDecoration(
+                          color: t.completed ? Colors.green.shade300 : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2))
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: Center(
+                          child: Text(
+                            t.title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              decoration: t.completed ? TextDecoration.lineThrough : null,
+                              color: t.completed ? Colors.white : Colors.black87,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
         );
       },
