@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'profile_page.dart';
-import 'settings_page.dart';
-import 'mainboard_page.dart';
-import 'feed_page.dart';
 import 'onboarding_page.dart';
 
 void main() {
