@@ -437,56 +437,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Sign in / Manage Account button
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFE2E8F0),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: OutlinedButton.icon(
-            onPressed: () {
-                              Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => const SignInPage()));
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide.none,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 20,
-                                horizontal: 24,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.login,
-                              color: Color(0xFF667EEA),
-                              size: 20,
-                            ),
-                            label: const Text(
-                              'Sign in / Manage Account',
-                              style: TextStyle(
-                                color: Color(0xFF667EEA),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
                         Container(
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
@@ -505,29 +455,12 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: _busy ? null : () async {
               setState(() => _busy = true);
               await AuthService.instance.signOut();
-              // Immediately create a new anonymous session so the app keeps working
-              final guest = await AuthService.instance.ensureAnon();
-
-              // create a basic profile doc if missing
-              final profRef =
-                  FirebaseFirestore.instance.collection('user_profiles').doc(guest.uid);
-              final snap = await profRef.get();
-              if (!snap.exists) {
-                await profRef.set({
-                  'displayName': 'user-${guest.uid.substring(0, 4)}',
-                  'username': 'user-${guest.uid.substring(0, 4)}',
-                  'anon': true,
-                  'createdAt': FieldValue.serverTimestamp(),
-                  'friendUids': [],
-                  'prefs': {},
-                });
-              }
 
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Signed out. New anonymous session started.')),
+              // Navigate to sign-in page instead of creating guest account
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const SignInPage()),
               );
-              setState(() => _busy = false);
             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
@@ -603,23 +536,10 @@ class _SettingsPageState extends State<SettingsPage> {
               setState(() => _busy = true);
               try {
                 await AuthService.instance.deleteAccount();
-                final guest = await AuthService.instance.ensureAnon();
-                final profRef =
-                    FirebaseFirestore.instance.collection('user_profiles').doc(guest.uid);
-                final snap = await profRef.get();
-                if (!snap.exists) {
-                  await profRef.set({
-                    'displayName': 'user-${guest.uid.substring(0, 4)}',
-                    'username': 'user-${guest.uid.substring(0, 4)}',
-                    'anon': true,
-                    'createdAt': FieldValue.serverTimestamp(),
-                    'friendUids': [],
-                    'prefs': {},
-                  });
-                }
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Account deleted. New anonymous session started.')),
+                // Navigate to sign-in page instead of creating guest account
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const SignInPage()),
                 );
               } catch (e) {
                 if (!mounted) return;

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../main_navigation.dart';
+import '../main.dart'; // Import bootstrapUserDocs
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -98,11 +99,11 @@ class _SignInPageState extends State<SignInPage> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
                 
                 // Header
                 Row(
@@ -201,6 +202,7 @@ class _SignInPageState extends State<SignInPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Guest section
         Container(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -211,7 +213,7 @@ class _SignInPageState extends State<SignInPage> {
                 Color(0xFFF8F9FA),
               ],
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.08),
@@ -221,7 +223,7 @@ class _SignInPageState extends State<SignInPage> {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -243,33 +245,35 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                     const SizedBox(width: 12),
                     const Text(
-                      'Welcome! Choose how to start:',
+                      'Quick Start',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF2D3748),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
                 
-                // Guest option
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF667EEA).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                // Guest option - smaller button
+                Center(
+                  child: Container(
+                    width: 240, // Increased width to accommodate content
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                       ),
-                    ],
-                  ),
-                  child: ElevatedButton(
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF667EEA).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
               onPressed: _busy
                   ? null
                   : () async {
@@ -278,59 +282,123 @@ class _SignInPageState extends State<SignInPage> {
                         _error = null;
                       });
                       try {
+                         // 1) Anonymous sign-in
                         final user = await AuthService.instance.ensureAnon();
-                        await _ensureProfile(user);
-                        if (mounted) Navigator.pop(context);
+                         
+                         // 2) Bootstrap required docs to prevent permission errors
+                         await bootstrapUserDocs(user.uid);
+                         
+                         // 3) The auth state change will automatically redirect to MainNavigation
+                         // No need to manually navigate - the StreamBuilder in main.dart handles this
                       } catch (e) {
                         _setErr(e);
                       } finally {
                         if (mounted) setState(() => _busy = false);
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.person_outline,
-                          color: Colors.white,
-                          size: 20,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.person_outline,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
                             'Continue as guest',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                        if (_busy)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                          if (_busy) ...[
+                            const SizedBox(width: 6),
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                      ],
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
 
-                const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-                // Google sign in
+        // Google sign in section
             if (kIsWeb)
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Color(0xFFF8F9FA),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF4285F4), Color(0xFF34A853)],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.login,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Sign in with Google',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2D3748),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -360,8 +428,9 @@ class _SignInPageState extends State<SignInPage> {
                             ..setCustomParameters({'prompt': 'select_account'});
                           final cred = await FirebaseAuth.instance
                               .signInWithPopup(provider);
-                          await _ensureProfile(cred.user!);
-                          if (mounted) Navigator.pop(context);
+                          await bootstrapUserDocs(cred.user!.uid);
+                          
+                          // The auth state change will automatically redirect to MainNavigation
                         } catch (e) {
                           _setErr(e);
                         } finally {
@@ -370,7 +439,7 @@ class _SignInPageState extends State<SignInPage> {
                       },
                       style: OutlinedButton.styleFrom(
                         side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -385,12 +454,38 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
 
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 32),
+        const SizedBox(height: 16),
 
-                // Username/Password section
+        // Username/Password section
+        Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                Color(0xFFF8F9FA),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   children: [
                     Container(
@@ -418,7 +513,7 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
 
                 Container(
                   decoration: BoxDecoration(
@@ -530,14 +625,9 @@ class _SignInPageState extends State<SignInPage> {
                                         .signInUsernamePassword(
                                             _signinUsernameCtrl.text.trim(),
                                 _signinPassCtrl.text);
-                        await _ensureProfile(cred.user!);
-                        if (mounted) {
-                          // Navigate to main board instead of just popping
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const MainNavigation()),
-                            (route) => false,
-                          );
-                        }
+                        await bootstrapUserDocs(cred.user!.uid);
+                        
+                        // The auth state change will automatically redirect to MainNavigation
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -594,14 +684,9 @@ class _SignInPageState extends State<SignInPage> {
                                         .registerUsernamePassword(
                                             _signinUsernameCtrl.text.trim(),
                                 _signinPassCtrl.text);
-                        await _ensureProfile(cred.user!);
-                        if (mounted) {
-                          // Navigate to main board instead of just popping
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const MainNavigation()),
-                            (route) => false,
-                          );
-                        }
+                        await bootstrapUserDocs(cred.user!.uid);
+                        
+                        // The auth state change will automatically redirect to MainNavigation
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -1008,8 +1093,9 @@ class _SignInPageState extends State<SignInPage> {
                             ..setCustomParameters({'prompt': 'select_account'});
                           final cred = await FirebaseAuth.instance
                               .signInWithPopup(provider);
-                          await _ensureProfile(cred.user!);
-                          if (mounted) Navigator.pop(context);
+                          await bootstrapUserDocs(cred.user!.uid);
+                          
+                          // The auth state change will automatically redirect to MainNavigation
                         } catch (e) {
                           _setErr(e);
                         } finally {
@@ -1143,14 +1229,9 @@ class _SignInPageState extends State<SignInPage> {
                                   .signInUsernamePassword(
                                       _signinUsernameCtrl.text.trim(),
                                 _signinPassCtrl.text);
-                        await _ensureProfile(cred.user!);
-                        if (mounted) {
-                          // Navigate to main board instead of just popping
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const MainNavigation()),
-                            (route) => false,
-                          );
-                        }
+                        await bootstrapUserDocs(cred.user!.uid);
+                        
+                        // The auth state change will automatically redirect to MainNavigation
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -1295,8 +1376,6 @@ class _SignInPageState extends State<SignInPage> {
                       });
                       try {
                         await AuthService.instance.signOut();
-                        final guest = await AuthService.instance.ensureAnon();
-                        await _ensureProfile(guest);
                         if (mounted) Navigator.pop(context);
                       } catch (e) {
                         _setErr(e);
