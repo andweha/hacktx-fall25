@@ -224,7 +224,7 @@ class _IncompleteTaskDialogState extends State<_IncompleteTaskDialog> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return FractionallySizedBox(
-      heightFactor: 0.70,
+      heightFactor: 0.75, // Reduced from 0.80 to eliminate white space
       widthFactor: 1,
       child: SafeArea(
         top: false,
@@ -242,16 +242,31 @@ class _IncompleteTaskDialogState extends State<_IncompleteTaskDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // grabber
-                    Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0D9CC),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                    // grabber and close button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SizedBox(width: 48), // Spacer to center grabber
+                        Container(
+                          width: 48,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0D9CC),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: widget.onCancel,
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFF7A6F62),
+                            size: 24,
+                          ),
+                          tooltip: 'Close',
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12), // Reduced from 16
 
                     Text(
                       widget.title,
@@ -262,51 +277,54 @@ class _IncompleteTaskDialogState extends State<_IncompleteTaskDialog> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8), // Reduced from 12
                     const Text(
                       'Did you finish this task?',
                       style: TextStyle(fontSize: 16, color: Color(0xFF7A6F62)),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12), // Reduced from 16
 
-                    // preview
-                    Container(
-                      height: 140,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE0D9CC), width: 1),
-                        color: const Color(0xFFFAFAFA),
-                      ),
-                      child: (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                _currentImageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Center(
-                                  child: Icon(Icons.broken_image, color: Color(0xFF7A6F62)),
+                    // preview - clickable upload area
+                    GestureDetector(
+                      onTap: _isUploading ? null : _uploadImage,
+                      child: Container(
+                        height: 140, // Back to original size
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE0D9CC), width: 1),
+                          color: const Color(0xFFFAFAFA),
+                        ),
+                        child: (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  _currentImageUrl!,
+                                  fit: BoxFit.contain, // Keep showing whole image
+                                  errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.broken_image, color: Color(0xFF7A6F62)),
+                                  ),
+                                  loadingBuilder: (c, child, p) =>
+                                      p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                                 ),
-                                loadingBuilder: (c, child, p) =>
-                                    p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              )
+                            : Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.image_outlined, color: Color(0xFFB59F84), size: 32),
+                                    SizedBox(height: 8),
+                                    Text('No image uploaded', style: TextStyle(color: Color(0xFF7A6F62))),
+                                    SizedBox(height: 2),
+                                    Text('Tap here or "Upload Photo" to add one',
+                                        style: TextStyle(color: Color(0xFFB59F84), fontSize: 12)),
+                                  ],
+                                ),
                               ),
-                            )
-                          : const Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.image_outlined, color: Color(0xFFB59F84), size: 32),
-                                  SizedBox(height: 8),
-                                  Text('No image uploaded', style: TextStyle(color: Color(0xFF7A6F62))),
-                                  SizedBox(height: 2),
-                                  Text('Tap "Upload Photo" to add one',
-                                      style: TextStyle(color: Color(0xFFB59F84), fontSize: 12)),
-                                ],
-                              ),
-                            ),
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12), // Reduced from 16
 
                     // actions
                     SizedBox(
@@ -323,7 +341,7 @@ class _IncompleteTaskDialogState extends State<_IncompleteTaskDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6), // Reduced from 8
 
                     if (widget.boardRef != null && widget.cellIndex != null)
                       SizedBox(
@@ -339,13 +357,6 @@ class _IncompleteTaskDialogState extends State<_IncompleteTaskDialog> {
                       ),
 
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: widget.onCancel,
-                        child: const Text('Cancel'),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -555,13 +566,22 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
 
   Widget _image() {
     if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
-      return Image.network(
-        widget.imageUrl!,
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        errorBuilder: (_, __, ___) => _defaultGradient(),
-        loadingBuilder: (c, child, p) =>
-            p == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            widget.imageUrl!,
+            fit: BoxFit.contain, // Changed from BoxFit.cover to show whole image
+            alignment: Alignment.center,
+            errorBuilder: (_, __, ___) => _defaultGradient(),
+            loadingBuilder: (c, child, p) =>
+                p == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
+          ),
+        ),
       );
     }
     return _defaultGradient();
@@ -593,8 +613,14 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Responsive height factor - optimized for image display
+    final heightFactor = screenWidth < 600 ? 0.80 : 0.70;
+    
     return FractionallySizedBox(
-      heightFactor: 0.65,
+      heightFactor: heightFactor,
       widthFactor: 1,
       child: SafeArea(
         top: false,
@@ -605,15 +631,27 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Positioned.fill(child: _image()),
                 Positioned.fill(
-                  child: const DecoratedBox(
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxHeight: screenHeight * 0.5, // Increased to show more of image
+                    ),
+                    child: _image(),
+                  ),
+                ),
+                // Gradient that fades out completely by 65% height
+                Positioned.fill(
+                  child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color.fromRGBO(0, 0, 0, 0.05), Color.fromRGBO(0, 0, 0, 0.45)],
-                        stops: [0.45, 1.0],
+                        colors: [
+                          Colors.black.withOpacity(0.15), // Subtle overlay at top
+                          Colors.black.withOpacity(0.08), // Fade at 30%
+                          Colors.transparent,              // Completely transparent at 65%
+                        ],
+                        stops: const [0.0, 0.3, 0.65],
                       ),
                     ),
                   ),
@@ -642,8 +680,26 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
                               style: theme.textTheme.headlineSmall?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
+                                    shadows: [
+                                      Shadow(
+                                        offset: const Offset(0, 1),
+                                        blurRadius: 3,
+                                        color: Colors.black.withOpacity(0.5),
+                                      ),
+                                    ],
                                   ) ??
-                                  const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                                  TextStyle(
+                                    color: Colors.white, 
+                                    fontSize: 22, 
+                                    fontWeight: FontWeight.w700,
+                                    shadows: [
+                                      Shadow(
+                                        offset: const Offset(0, 1),
+                                        blurRadius: 3,
+                                        color: Colors.black.withOpacity(0.5),
+                                      ),
+                                    ],
+                                  ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 12),
@@ -652,6 +708,13 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
+                                shadows: [
+                                  Shadow(
+                                    offset: const Offset(0, 1),
+                                    blurRadius: 2,
+                                    color: Colors.black.withOpacity(0.4),
+                                  ),
+                                ],
                               ),
                               textAlign: TextAlign.center,
                             ),

@@ -1,5 +1,4 @@
 // lib/settings_page.dart
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,7 +15,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _nameCtrl = TextEditingController();
-  bool _linking = false;
   bool _busy = false;
 
   // NEW: one-time public-profile backfill (for older accounts)
@@ -379,124 +377,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            if (anon && kIsWeb)
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: const Color(0xFFE2E8F0),
-                                      width: 1,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.02),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: OutlinedButton.icon(
-                                    onPressed: _linking
-                                        ? null
-                                        : () async {
-                                            setState(() => _linking = true);
-                                            try {
-                                              final provider =
-                                                  GoogleAuthProvider();
-                                              // Force account chooser on web
-                                              provider.setCustomParameters(
-                                                  {'prompt': 'select_account'});
-
-                                              await FirebaseAuth.instance
-                                                  .currentUser!
-                                                  .linkWithPopup(provider);
-
-                                              await profRef.set(
-                                                  {'anon': false},
-                                                  SetOptions(merge: true));
-
-                                              final name = (await profRef.get())
-                                                  .data()?['displayName'];
-                                              if (name is String &&
-                                                  name.isNotEmpty) {
-                                                await FirebaseAuth.instance
-                                                    .currentUser!
-                                                    .updateDisplayName(name);
-                                              }
-
-                                              // Public mirror (also photo)
-                                              final me = FirebaseAuth
-                                                  .instance.currentUser!;
-                                              await FirebaseFirestore.instance
-                                                  .collection('public_profiles')
-                                                  .doc(me.uid)
-                                                  .set({
-                                                'displayName': me.displayName ??
-                                                    (name is String ? name : ''),
-                                                'photoURL': me.photoURL,
-                                                'updatedAt':
-                                                    FieldValue.serverTimestamp(),
-                                              }, SetOptions(merge: true));
-
-                                              if (!mounted) return;
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(const SnackBar(
-                                                      content: Text(
-                                                          'Linked to Google.')));
-                                            } catch (e) {
-                                              if (!mounted) return;
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(SnackBar(
-                                                      content:
-                                                          Text('Link failed: $e')));
-                                            } finally {
-                                              if (mounted) {
-                                                setState(() => _linking = false);
-                                              }
-                                            }
-                                          },
-                                    style: OutlinedButton.styleFrom(
-                                      side: BorderSide.none,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
-                                    horizontal: 24,
-                                  ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    icon: _linking
-                                        ? const SizedBox(
-                                            height: 18,
-                                            width: 18,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2),
-                                          )
-                                        : const Icon(
-                                            Icons.link,
-                                            color: Color(0xFF667EEA),
-                                            size: 20,
-                                          ),
-                                    label: const Text(
-                                      'Link Google (web)',
-                                      style: TextStyle(
-                                        color: Color(0xFF667EEA),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                ),
+              ),
+            ),
+          ),
 
                 const SizedBox(height: 24),
 
@@ -553,6 +439,56 @@ class _SettingsPageState extends State<SettingsPage> {
                           ],
                         ),
                         const SizedBox(height: 20),
+
+                        // Sign in / Manage Account button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFE2E8F0),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: OutlinedButton.icon(
+            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => const SignInPage()));
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide.none,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 20,
+                                horizontal: 24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.login,
+                              color: Color(0xFF667EEA),
+                              size: 20,
+                            ),
+                            label: const Text(
+                              'Sign in / Manage Account',
+                              style: TextStyle(
+                                color: Color(0xFF667EEA),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
 
                         Container(
                           decoration: BoxDecoration(
@@ -613,56 +549,6 @@ class _SettingsPageState extends State<SettingsPage> {
                               'Sign out',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Sign in / Manage Account button
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFE2E8F0),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => const SignInPage()));
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide.none,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 20,
-                                horizontal: 24,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.login,
-                              color: Color(0xFF667EEA),
-                              size: 20,
-                            ),
-                            label: const Text(
-                              'Sign in / Manage Account',
-                              style: TextStyle(
-                                color: Color(0xFF667EEA),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
