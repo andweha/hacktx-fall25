@@ -623,16 +623,14 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
   Widget _image() {
     if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
       return Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+        // Fill “extra image space” with a matching color.
+        // You can tweak this color to better match each image.
+        color: const Color(0xFF1A0B2E),
+        child: Center(
+          // ensures the image is centered in its box
           child: Image.network(
             widget.imageUrl!,
-            fit:
-                BoxFit.contain, // Changed from BoxFit.cover to show whole image
+            fit: BoxFit.contain, // show entire image
             alignment: Alignment.center,
             errorBuilder: (_, __, ___) => _defaultGradient(),
             loadingBuilder: (c, child, p) => p == null
@@ -688,11 +686,13 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
               fit: StackFit.expand,
               children: [
                 // Image container
-                Positioned.fill(
-                  child: Container(
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
                     constraints: BoxConstraints(
                       maxHeight:
-                          screenHeight * 0.5, // Increased to show more of image
+                          screenHeight * 0.5, // controls image area height
+                      // width stays as wide as the dialog
                     ),
                     child: Stack(
                       children: [
