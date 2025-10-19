@@ -62,15 +62,15 @@ class _SettingsPageState extends State<SettingsPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // For guest users, show a simplified settings page even if no document exists
+            // Check if user is anonymous (guest) first
+            final isAnonymous = FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
+            if (isAnonymous) {
+              // Guest user - always show simplified settings
+              return _buildGuestSettingsPage(uid);
+            }
+
+            // For non-guest users, check if profile exists
             if (!snap.hasData || !snap.data!.exists) {
-              final isAnonymous = FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
-              
-              if (isAnonymous) {
-                // Guest user - show simplified settings immediately
-                return _buildGuestSettingsPage(uid);
-              }
-              
               // Non-guest user - try to bootstrap with timeout and error handling
               WidgetsBinding.instance.addPostFrameCallback((_) async {
                 final uid = FirebaseAuth.instance.currentUser?.uid;

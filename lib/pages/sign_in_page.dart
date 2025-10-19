@@ -140,15 +140,36 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 
                  // Header
-                 Text(
-                   u == null ? 'Sign in / Link account' : 
-                   u.isAnonymous ? 'Create Permanent Account' : 
-                   'Sign in / Link account',
-                   style: const TextStyle(
-                     fontSize: 28,
-                     fontWeight: FontWeight.bold,
-                     color: Color(0xFF2D3748),
-                   ),
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   children: [
+                     Expanded(
+                       child: Text(
+                         u == null ? 'Sign in / Link account' : 
+                         u.isAnonymous ? 'Create Permanent Account' : 
+                         'Sign in / Link account',
+                         style: const TextStyle(
+                           fontSize: 28,
+                           fontWeight: FontWeight.bold,
+                           color: Color(0xFF2D3748),
+                         ),
+                       ),
+                     ),
+                     IconButton(
+                       onPressed: () {
+                         Navigator.of(context).pushAndRemoveUntil(
+                           MaterialPageRoute(builder: (_) => const MainNavigation()),
+                           (route) => false,
+                         );
+                       },
+                       icon: const Icon(
+                         Icons.exit_to_app,
+                         color: Color(0xFF667EEA),
+                         size: 28,
+                       ),
+                       tooltip: 'Go to Board',
+                     ),
+                   ],
                  ),
 
                 const SizedBox(height: 24),
