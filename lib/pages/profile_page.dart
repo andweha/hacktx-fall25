@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Clipboard
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hacktx_fall25/services/friend_service.dart';
 
 import 'sign_in_page.dart'; // <-- NEW: navigate to the sign-in/upgrade screen
 
