@@ -452,7 +452,6 @@ class _CompletedTaskDialog extends StatefulWidget {
 
   static const _defaultDate = 'October 12, 12:28 PM';
   static const _defaultLocation = 'Kyoto, Japan';
-  static const _assetPath = 'assets/images/task_complete_bg.png';
 
   final String? imageUrl;
   final String? completedAt;
@@ -718,6 +717,20 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
         ),
       );
     }
+
+    final background = widget.backgroundImage;
+    if (background != null) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: background,
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+          ),
+        ),
+      );
+    }
+
     return _defaultGradient();
   }
 
@@ -748,8 +761,6 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
 
     // Responsive height factor - optimized for image display
     final heightFactor = screenWidth < 600 ? 0.80 : 0.70;
-
-    final img = backgroundImage ?? AssetImage(_assetPath);
 
     return FractionallySizedBox(
       heightFactor: heightFactor,
