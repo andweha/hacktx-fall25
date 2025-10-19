@@ -79,4 +79,18 @@ class BoardService {
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
+
+  static Future<void> saveImageUrl(
+      int index, List cells, String imageUrl) async {
+    final cell = Map<String, dynamic>.from(cells[index]);
+    cell['imageUrl'] = imageUrl;
+    final newCells = List<Map<String, dynamic>>.from(cells);
+    newCells[index] = cell;
+    await _doc().update({'cells': newCells});
+
+    // Keep lastUpdated fresh on image uploads
+    await _doc().set({
+      'lastUpdated': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 }

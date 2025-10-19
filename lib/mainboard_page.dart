@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'services/board_service.dart';
 import 'widgets/task_dialog.dart';
@@ -101,6 +102,12 @@ class _MainBoardPageState extends State<MainBoardPage> {
 
   List<Task> _tasksFrom(List rawCells) {
     return List.generate(9, (i) {
+      // Add bounds checking to prevent RangeError
+      if (rawCells.isEmpty || i >= rawCells.length) {
+        print('Error: rawCells is empty or index $i is out of bounds (length: ${rawCells.length})');
+        return Task(title: taskDataset[i % taskDataset.length], completed: false);
+      }
+      
       final m = Map<String, dynamic>.from(rawCells[i]);
       final title =
           (m['title'] as String?) ?? taskDataset[i % taskDataset.length];
@@ -139,9 +146,29 @@ class _MainBoardPageState extends State<MainBoardPage> {
   }
 
   void _showTaskDialog(int index, List rawCells) {
+    // Add bounds checking to prevent RangeError
+    if (rawCells.isEmpty || index >= rawCells.length) {
+      print('Error: rawCells is empty or index $index is out of bounds (length: ${rawCells.length})');
+      return;
+    }
+    
     final cell = Map<String, dynamic>.from(rawCells[index]);
     final title = (cell['title'] as String?) ?? 'Task';
     final done = (cell['status'] as String?) == 'done';
+    final imageUrl = cell['imageUrl'] as String?;
+
+    // Debug logging
+    print('=== Task Dialog Debug ===');
+    print('Cell index: $index');
+    print('Cell data: $cell');
+    print('ImageUrl from Firestore: $imageUrl');
+    print('Task completed: $done');
+
+    // Get the board reference
+    final user = FirebaseAuth.instance.currentUser;
+    final boardRef = user != null 
+        ? FirebaseFirestore.instance.collection('boards').doc(user.uid)
+        : null;
 
     Future<void> handleToggle() async {
       // 1) Simulate the toggle locally to see if board will be complete
@@ -204,6 +231,9 @@ class _MainBoardPageState extends State<MainBoardPage> {
                   completed: done,
                   onToggle: handleToggle,
                   onCancel: () => Navigator.pop(context),
+                  imageUrl: imageUrl,
+                  cellIndex: index,
+                  boardRef: boardRef,
                 ),
               ),
             ),
@@ -288,9 +318,10 @@ class _MainBoardPageState extends State<MainBoardPage> {
           );
         }
 
-        final cells = List<Map<String, dynamic>>.from(
-          snap.data!.data()!['cells'],
-        );
+        final cellsData = snap.data!.data()!['cells'];
+        final cells = cellsData is List 
+            ? List<Map<String, dynamic>>.from(cellsData)
+            : <Map<String, dynamic>>[];
         final tasks = _tasksFrom(cells);
         final isCompleted = _isBoardCompleted(tasks);
 
