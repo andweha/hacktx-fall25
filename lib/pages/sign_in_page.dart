@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
-import '../services/guest_session.dart';
 import '../main_navigation.dart';
 import '../main.dart'; // Import bootstrapUserDocs
 
@@ -46,6 +45,11 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
   }
 
   Future<void> _mirrorPublicProfile(User u, {String? preferredName}) async {
+    if (u.uid.isEmpty) {
+      print('_mirrorPublicProfile: Error - User UID is empty');
+      return;
+    }
+    
     final displayName =
         (preferredName?.trim().isNotEmpty == true ? preferredName!.trim() : (u.displayName ?? '')) ;
     await FirebaseFirestore.instance
@@ -60,6 +64,11 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
   }
 
   Future<void> _ensureProfile(User u, {String? preferredName}) async {
+    if (u.uid.isEmpty) {
+      print('_ensureProfile: Error - User UID is empty');
+      return;
+    }
+    
     final ref =
         FirebaseFirestore.instance.collection('user_profiles').doc(u.uid);
     final snap = await ref.get();
@@ -97,6 +106,19 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final u = FirebaseAuth.instance.currentUser;
 
+    if (u != null) {
+      // If you also want guests to skip this page, keep as-is.
+      // If you only want permanent users to skip, change to: if (u != null && !u.isAnonymous)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainNavigation()),
+          (route) => false,
+        );
+      });
+      return const SizedBox.shrink(); // Render nothing while redirecting
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -117,15 +139,17 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
         children: [
                 const SizedBox(height: 8),
                 
-                // Header
-                const Text(
-                  'Sign in / Link account',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D3748),
-                  ),
-                ),
+                 // Header
+                 Text(
+                   u == null ? 'Sign in / Link account' : 
+                   u.isAnonymous ? 'Create Permanent Account' : 
+                   'Sign in / Link account',
+                   style: const TextStyle(
+                     fontSize: 28,
+                     fontWeight: FontWeight.bold,
+                     color: Color(0xFF2D3748),
+                   ),
+                 ),
 
                 const SizedBox(height: 24),
 
@@ -266,11 +290,15 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                         print('Guest sign-in: Starting anonymous sign-in');
                         final user = await AuthService.instance.ensureAnon();
                         print('Guest sign-in: Anonymous user created: ${user.uid}');
+                        
+                        if (user.uid.isEmpty) {
+                          throw Exception('Guest user ID is empty');
+                        }
                          
                          // Bootstrap documents for the anonymous user
-                        try {
-                          await bootstrapUserDocs(user.uid);
-                          print('Guest sign-in: Bootstrap completed');
+                         try {
+                           await _ensureProfile(user);
+                           print('Guest sign-in: Bootstrap completed');
                         } catch (bootstrapError) {
                           print('Guest sign-in: Bootstrap failed but continuing: $bootstrapError');
                           // Don't fail the entire sign-in process if bootstrap fails
@@ -323,6 +351,111 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Create Permanent Account option
+                Center(
+                  child: Container(
+                    width: 280,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              setState(() {
+                                _busy = true;
+                                _error = null;
+                              });
+                              try {
+                                // Use Firebase Anonymous auth first
+                                print('Create Permanent Account: Starting anonymous sign-in');
+                                final user = await AuthService.instance.ensureAnon();
+                                print('Create Permanent Account: Anonymous user created: ${user.uid}');
+                                
+                                if (user.uid.isEmpty) {
+                                  throw Exception('Guest user ID is empty');
+                                }
+                                
+                                 // Bootstrap documents for the anonymous user
+                                 try {
+                                   await _ensureProfile(user);
+                                   print('Create Permanent Account: Bootstrap completed');
+                                } catch (bootstrapError) {
+                                  print('Create Permanent Account: Bootstrap failed but continuing: $bootstrapError');
+                                  // Don't fail the entire sign-in process if bootstrap fails
+                                }
+                                
+                                // Wait a moment for auth state to update, then navigate to upgrade page
+                                await Future.delayed(const Duration(milliseconds: 100));
+                                
+                                // Navigate to the upgrade page (same as Settings -> Create Permanent Account)
+                                // The auth state change will automatically show the upgrade section
+                                if (mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const SignInPage()),
+                                  );
+                                }
+                              } catch (e) {
+                                print('Create Permanent Account: Error occurred: $e');
+                                _setErr(e);
+                              } finally {
+                                if (mounted) setState(() => _busy = false);
+                              }
+                            },
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.account_circle_outlined,
+                            color: Color(0xFF667EEA),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Create Permanent Account',
+                            style: TextStyle(
+                              color: Color(0xFF667EEA),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (_busy) ...[
+                            const SizedBox(width: 6),
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF667EEA),
                               ),
                             ),
                           ],
@@ -418,6 +551,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
           ),
         ),
 
+
       ],
     );
   }
@@ -446,7 +580,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
         children: [
           const SizedBox(height: 16),
           const Text(
-            'Sign in with Google',
+            'Continue with Google',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -455,7 +589,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Quick and secure sign-in using your Google account',
+            'Sign in or create account using your Google account',
             style: TextStyle(
               color: Color(0xFF718096),
               fontSize: 14,
@@ -490,9 +624,14 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                           ..setCustomParameters({'prompt': 'select_account'});
                         final cred = await FirebaseAuth.instance
                             .signInWithPopup(provider);
-                        await bootstrapUserDocs(cred.user!.uid);
                         
-                        // Navigate directly to main navigation
+                         if (cred.user?.uid.isEmpty ?? true) {
+                           throw Exception('Google sign-in failed - no user ID');
+                         }
+                         
+                         await _ensureProfile(cred.user!);
+                         
+                         // Navigate directly to main navigation after Google sign-in
                         if (mounted) {
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(builder: (_) => const MainNavigation()),
@@ -523,7 +662,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Sign in with Google',
+                    'Continue with Google',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -660,129 +799,70 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
           const SizedBox(height: 20),
 
           // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF38A169), Color(0xFF2F855A)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF38A169).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _busy
-                        ? null
-                        : () async {
-                            setState(() {
-                              _busy = true;
-                              _error = null;
-                            });
-                            try {
-                              final cred = await AuthService.instance
-                                  .signInUsernamePassword(
-                                      _signinUsernameCtrl.text.trim(),
-                                      _signinPassCtrl.text);
-                              await bootstrapUserDocs(cred.user!.uid);
-                              
-                              // Navigate directly to main navigation
-                              if (mounted) {
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(builder: (_) => const MainNavigation()),
-                                  (route) => false,
-                                );
-                              }
-                            } catch (e) {
-                              _setErr(e);
-                            } finally {
-                              if (mounted) setState(() => _busy = false);
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Sign in',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF38A169), Color(0xFF2F855A)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF38A169).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      setState(() {
+                        _busy = true;
+                        _error = null;
+                      });
+                      try {
+                        final cred = await AuthService.instance
+                            .signInUsernamePassword(
+                                _signinUsernameCtrl.text.trim(),
+                                _signinPassCtrl.text);
+                        
+                         if (cred.user?.uid.isEmpty ?? true) {
+                           throw Exception('Username sign-in failed - no user ID');
+                         }
+                         
+                         await _ensureProfile(cred.user!);
+                         
+                         // Navigate directly to main navigation after sign-in
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
+                      } catch (e) {
+                        _setErr(e);
+                      } finally {
+                        if (mounted) setState(() => _busy = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () async {
-                            setState(() {
-                              _busy = true;
-                              _error = null;
-                            });
-                            try {
-                              final cred = await AuthService.instance
-                                  .registerUsernamePassword(
-                                      _signinUsernameCtrl.text.trim(),
-                                      _signinPassCtrl.text);
-                              await bootstrapUserDocs(cred.user!.uid);
-                              
-                              // The auth state change will automatically redirect to MainNavigation
-                            } catch (e) {
-                              _setErr(e);
-                            } finally {
-                              if (mounted) setState(() => _busy = false);
-                            }
-                          },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide.none,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Create account',
-                      style: TextStyle(
-                        color: Color(0xFF667EEA),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+              child: const Text(
+                'Sign in',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1002,16 +1082,14 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                         await FirebaseAuth.instance.currentUser!
                             .linkWithPopup(provider);
 
-                        final user = FirebaseAuth.instance.currentUser!;
-                        await bootstrapUserDocs(user.uid);
-                        
-                        // Navigate directly to main navigation
-                        if (mounted) {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const MainNavigation()),
-                            (route) => false,
-                          );
-                        }
+                         final user = FirebaseAuth.instance.currentUser!;
+                         await _ensureProfile(user);
+                         
+                         if (user.uid.isEmpty) {
+                           throw Exception('User ID is empty after linking Google');
+                         }
+                         
+                         // Auth state change will automatically redirect to MainNavigation
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -1201,18 +1279,17 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                         await AuthService.instance.linkUsernamePassword(
                             _usernameCtrl.text.trim(), _passCtrl.text);
                         final user = FirebaseAuth.instance.currentUser!;
+                        if (user.uid.isEmpty) {
+                          throw Exception('User ID is empty after linking account');
+                        }
                         await _ensureProfile(user,
                             preferredName: _nameCtrl.text.trim());
                         await FirebaseFirestore.instance
                             .collection('user_profiles')
                             .doc(user.uid)
                             .set({'anon': false}, SetOptions(merge: true));
-                        if (mounted) {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const MainNavigation()),
-                            (route) => false,
-                          );
-                        }
+                        
+                        // Auth state change will automatically redirect to MainNavigation
                       } catch (e) {
                         _setErr(e);
                       } finally {

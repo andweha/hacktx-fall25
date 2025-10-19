@@ -11,17 +11,13 @@ class GuestSession {
 
   /// Get or create a guest session ID
   static String getGuestId() {
-    if (_guestId == null) {
-      _guestId = 'guest_${DateTime.now().millisecondsSinceEpoch}_${_generateRandomString(6)}';
-    }
+    _guestId ??= 'guest_${DateTime.now().millisecondsSinceEpoch}_${_generateRandomString(6)}';
     return _guestId!;
   }
 
   /// Get or create a guest name
   static String getGuestName() {
-    if (_guestName == null) {
-      _guestName = 'Guest User';
-    }
+    _guestName ??= 'Guest User';
     return _guestName!;
   }
 

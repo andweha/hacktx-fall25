@@ -1,6 +1,5 @@
 // lib/pages/settings_page.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -72,11 +71,35 @@ class _SettingsPageState extends State<SettingsPage> {
                 return _buildGuestSettingsPage(uid);
               }
               
-              // Non-guest user - try to bootstrap and show loading
+              // Non-guest user - try to bootstrap with timeout and error handling
               WidgetsBinding.instance.addPostFrameCallback((_) async {
                 final uid = FirebaseAuth.instance.currentUser?.uid;
                 if (uid != null) {
-                  await bootstrapUserDocs(uid);
+                  try {
+                    print('Settings: Starting bootstrap for uid: $uid');
+                    await bootstrapUserDocs(uid);
+                    print('Settings: Bootstrap completed successfully');
+                  } catch (e) {
+                    print('Settings: Bootstrap failed: $e');
+                    // If bootstrap fails, create a minimal profile to prevent infinite loading
+                    try {
+                      await FirebaseFirestore.instance
+                          .collection('user_profiles')
+                          .doc(uid)
+                          .set({
+                        'displayName': FirebaseAuth.instance.currentUser?.displayName ?? 'User',
+                        'username': 'user-${uid.substring(0, 4)}',
+                        'photoURL': FirebaseAuth.instance.currentUser?.photoURL,
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'anon': false,
+                        'friendUids': [],
+                        'prefs': {},
+                      });
+                      print('Settings: Created fallback profile');
+                    } catch (fallbackError) {
+                      print('Settings: Fallback profile creation failed: $fallbackError');
+                    }
+                  }
                 }
               });
               
@@ -89,6 +112,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     Text(
                       'Setting up your profile...',
                       style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'This may take a moment',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),

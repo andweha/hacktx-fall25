@@ -398,8 +398,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                           ),
                                         );
                                       } finally {
-                                        if (mounted)
+                                        if (mounted) {
                                           setState(() => _linking = false);
+                                        }
                                       }
                                     },
                               icon: _linking
