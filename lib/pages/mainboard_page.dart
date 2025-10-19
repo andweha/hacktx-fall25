@@ -1,5 +1,6 @@
 // lib/pages/mainboard_page.dart
 import 'dart:ui';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,6 +44,7 @@ class _MainBoardPageState extends State<MainBoardPage> {
 
   final List<String> taskDataset = [
     'Wake up before 7 AM and get out of bed immediately',
+    'Do a 20-minute yoga or stretching session',
     'Meditate in silence for 15 minutes',
     'Journal one full page about your current mindset',
     'Read 20 pages of a nonfiction or self-growth book',
@@ -64,7 +66,6 @@ class _MainBoardPageState extends State<MainBoardPage> {
     'Write a handwritten note or thank-you letter',
     'Watch a documentary or educational video instead of entertainment',
     'Try a new recipe and share a picture',
-    'Do a 20-minute yoga or stretching session',
     'Write a gratitude list of 10 specific things',
     'Plan your full schedule for tomorrow in detail',
     'Take a picture of something that inspires you and write why',

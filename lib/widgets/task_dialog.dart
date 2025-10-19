@@ -771,182 +771,187 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
-            child: Stack(
-              fit: StackFit.expand,
+            child: Column(
               children: [
-                // Image container
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight:
-                          screenHeight * 0.5, // controls image area height
-                      // width stays as wide as the dialog
-                    ),
-                    child: Stack(
-                      children: [
-                        // Image
-                        _image(),
-                        // Gradient over ONLY the top 70% of the image
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: FractionallySizedBox(
-                            heightFactor: 0.70, // stops at 70% height
-                            widthFactor: 1.0,
-                            child: IgnorePointer(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    stops: const [0.0, 0.5, 0.7],
-                                    colors: [
-                                      Colors.black.withOpacity(0.15), // top
-                                      Colors.black.withOpacity(0.08), // middle
-                                      Colors
-                                          .transparent, // fully transparent by 70%
-                                    ],
+                // Top: image and info
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Image container
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: screenHeight * 0.5,
+                          ),
+                          child: Stack(
+                            children: [
+                              _image(),
+                              Align(
+                                alignment: Alignment.topCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: 0.70,
+                                  widthFactor: 1.0,
+                                  child: IgnorePointer(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          stops: const [0.0, 0.5, 0.7],
+                                          colors: [
+                                            Colors.black.withOpacity(0.15),
+                                            Colors.black.withOpacity(0.08),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color.fromRGBO(0, 0, 0, 0.0),
-                          Color.fromRGBO(0, 0, 0, 0.65),
-                        ],
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.title,
-                          style:
-                              theme.textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                shadows: [
-                                  Shadow(
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 3,
-                                    color: Colors.black.withOpacity(0.5),
-                                  ),
-                                ],
-                              ) ??
-                              TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                shadows: [
-                                  Shadow(
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 3,
-                                    color: Colors.black.withOpacity(0.5),
-                                  ),
-                                ],
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _formatCompletionDate(),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            shadows: [
-                              Shadow(
-                                offset: const Offset(0, 1),
-                                blurRadius: 2,
-                                color: Colors.black.withOpacity(0.4),
                               ),
                             ],
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 4),
-                        _locationLoading
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
-                                    width: 12,
-                                    height: 12,
-                                    child: CircularProgressIndicator(
+                      ),
+                      // Info overlay (title, date, location)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.title,
+                                style: theme.textTheme.headlineSmall?.copyWith(
                                       color: Colors.white,
-                                      strokeWidth: 2,
+                                      fontWeight: FontWeight.w700,
+                                      shadows: [
+                                        Shadow(
+                                          offset: const Offset(0, 1),
+                                          blurRadius: 3,
+                                          color: Colors.black.withOpacity(0.5),
+                                        ),
+                                      ],
+                                    ) ??
+                                    TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                      shadows: [
+                                        Shadow(
+                                          offset: const Offset(0, 1),
+                                          blurRadius: 3,
+                                          color: Colors.black.withOpacity(0.5),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Getting location...',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(color: Colors.white),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                _locationString,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _formatCompletionDate(),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  shadows: [
+                                    Shadow(
+                                      offset: const Offset(0, 1),
+                                      blurRadius: 2,
+                                      color: Colors.black.withOpacity(0.4),
+                                    ),
+                                  ],
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                        const SizedBox(height: 28),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: widget.onToggle,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color.fromRGBO(
-                                255,
-                                255,
-                                255,
-                                0.92,
-                              ),
-                              foregroundColor: Colors.black87,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                            child: const Text('Mark Incomplete'),
+                              const SizedBox(height: 4),
+                              _locationLoading
+                                  ? Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Getting location...',
+                                          style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    )
+                                  : Text(
+                                      _locationString,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: Colors.white,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: widget.onCancel,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white70),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                            child: const Text('Close'),
-                          ),
-                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Bottom: blurred button bar
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 16), // reduced vertical padding
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color.fromRGBO(0, 0, 0, 0.0),
+                        Color.fromRGBO(0, 0, 0, 0.65),
                       ],
                     ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: widget.onToggle,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color.fromRGBO(255, 255, 255, 0.92),
+                            foregroundColor: Colors.black87,
+                            padding: const EdgeInsets.symmetric(vertical: 12), // reduced button padding
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text('Mark Incomplete'),
+                        ),
+                      ),
+                      const SizedBox(height: 6), // reduced spacing
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: widget.onCancel,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white70),
+                            padding: const EdgeInsets.symmetric(vertical: 12), // reduced button padding
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text('Close'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
