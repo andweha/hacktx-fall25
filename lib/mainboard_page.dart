@@ -156,6 +156,7 @@ class _MainBoardPageState extends State<MainBoardPage> {
     final title = (cell['title'] as String?) ?? 'Task';
     final done = (cell['status'] as String?) == 'done';
     final imageUrl = cell['imageUrl'] as String?;
+    final completedAt = cell['completedAt'] as String?;
 
     // Debug logging
     print('=== Task Dialog Debug ===');
@@ -234,6 +235,7 @@ class _MainBoardPageState extends State<MainBoardPage> {
                   imageUrl: imageUrl,
                   cellIndex: index,
                   boardRef: boardRef,
+                  completedAt: completedAt,
                 ),
               ),
             ),

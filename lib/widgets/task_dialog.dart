@@ -4,8 +4,11 @@ import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 typedef TaskToggleCallback = Future<void> Function();
 
@@ -19,6 +22,7 @@ class TaskDialog extends StatelessWidget {
     this.imageUrl,
     this.cellIndex,
     this.boardRef,
+    this.completedAt,
   });
 
   final String title;
@@ -30,6 +34,7 @@ class TaskDialog extends StatelessWidget {
   final String? imageUrl;
   final int? cellIndex;
   final DocumentReference<Map<String, dynamic>>? boardRef;
+  final String? completedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +44,7 @@ class TaskDialog extends StatelessWidget {
             onToggle: onToggle,
             onCancel: onCancel,
             imageUrl: imageUrl,
+            completedAt: completedAt,
           )
         : _IncompleteTaskDialog(
             title: title,
@@ -353,35 +359,235 @@ class _IncompleteTaskDialogState extends State<_IncompleteTaskDialog> {
 
 /* =========================== COMPLETED (Mark Incomplete) =========================== */
 
-class _CompletedTaskDialog extends StatelessWidget {
+class _CompletedTaskDialog extends StatefulWidget {
   const _CompletedTaskDialog({
     required this.title,
     required this.onToggle,
     required this.onCancel,
     this.imageUrl,
+    this.completedAt,
   });
 
   final String title;
   final TaskToggleCallback onToggle;
   final VoidCallback onCancel;
   final String? imageUrl;
+  final String? completedAt;
 
-  static const _dateString = 'October 12, 12:28 PM';
-  static const _locationString = 'Kyoto, Japan';
-  static const _fallbackAsset = 'assets/images/task_complete_bg.png';
+  @override
+  State<_CompletedTaskDialog> createState() => _CompletedTaskDialogState();
+}
+
+class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
+  String _locationString = 'Getting location...';
+  bool _locationLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start location detection immediately but don't block UI
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // For web, use a simpler approach with faster timeout
+      if (kIsWeb) {
+        // Try to get location with a very short timeout for web
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.lowest,
+          timeLimit: const Duration(seconds: 3),
+        );
+
+        // For web, we'll use a simple city lookup based on coordinates
+        // This is more reliable than reverse geocoding on web
+        final lat = position.latitude;
+        final lng = position.longitude;
+        
+        // Simple coordinate-based city detection for common areas
+        String cityName = _getCityFromCoordinates(lat, lng);
+        
+        setState(() {
+          _locationString = cityName;
+          _locationLoading = false;
+        });
+        return;
+      }
+
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _locationString = 'Location services disabled';
+          _locationLoading = false;
+        });
+        return;
+      }
+
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _locationString = 'Location permission denied';
+            _locationLoading = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _locationString = 'Location permission permanently denied';
+          _locationLoading = false;
+        });
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      );
+
+      // Convert coordinates to city name using reverse geocoding
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks.first;
+        final city = placemark.locality ?? placemark.administrativeArea ?? 'Unknown';
+        final state = placemark.administrativeArea ?? placemark.country ?? '';
+        
+        setState(() {
+          _locationString = state.isNotEmpty ? '$city, $state' : city;
+          _locationLoading = false;
+        });
+      } else {
+        setState(() {
+          _locationString = 'Unknown location';
+          _locationLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Location error: $e');
+      setState(() {
+        // Fallback for development/localhost
+        _locationString = 'Location unavailable';
+        _locationLoading = false;
+      });
+    }
+  }
+
+  String _getCityFromCoordinates(double lat, double lng) {
+    // Simple coordinate-based city detection for common areas
+    // This is more reliable for web than reverse geocoding
+    
+    // Austin, TX area
+    if (lat >= 30.0 && lat <= 30.5 && lng >= -98.0 && lng <= -97.5) {
+      return 'Austin, TX';
+    }
+    
+    // San Francisco, CA area
+    if (lat >= 37.7 && lat <= 37.8 && lng >= -122.6 && lng <= -122.3) {
+      return 'San Francisco, CA';
+    }
+    
+    // New York, NY area
+    if (lat >= 40.6 && lat <= 40.9 && lng >= -74.1 && lng <= -73.7) {
+      return 'New York, NY';
+    }
+    
+    // Los Angeles, CA area
+    if (lat >= 33.9 && lat <= 34.2 && lng >= -118.5 && lng <= -118.0) {
+      return 'Los Angeles, CA';
+    }
+    
+    // Chicago, IL area
+    if (lat >= 41.7 && lat <= 42.0 && lng >= -87.9 && lng <= -87.5) {
+      return 'Chicago, IL';
+    }
+    
+    // Seattle, WA area
+    if (lat >= 47.5 && lat <= 47.7 && lng >= -122.5 && lng <= -122.2) {
+      return 'Seattle, WA';
+    }
+    
+    // Default fallback
+    return 'Current Location';
+  }
+
+  String _formatCompletionDate() {
+    if (widget.completedAt == null || widget.completedAt!.isEmpty) {
+      return 'Just completed';
+    }
+    
+    try {
+      final date = DateTime.parse(widget.completedAt!);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inMinutes < 1) {
+        return 'Just completed';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} minutes ago';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} hours ago';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        // Format as "Month Day, Year at Time"
+        final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        final month = months[date.month - 1];
+        final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+        final minute = date.minute.toString().padLeft(2, '0');
+        final ampm = date.hour >= 12 ? 'PM' : 'AM';
+        
+        return '$month ${date.day}, ${date.year} at $hour:$minute $ampm';
+      }
+    } catch (e) {
+      return 'Recently completed';
+    }
+  }
 
   Widget _image() {
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
       return Image.network(
-        imageUrl!,
+        widget.imageUrl!,
         fit: BoxFit.cover,
         alignment: Alignment.center,
-        errorBuilder: (_, __, ___) => Image.asset(_fallbackAsset, fit: BoxFit.cover),
+        errorBuilder: (_, __, ___) => _defaultGradient(),
         loadingBuilder: (c, child, p) =>
             p == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
-    return Image.asset(_fallbackAsset, fit: BoxFit.cover);
+    return _defaultGradient();
+  }
+
+  Widget _defaultGradient() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF6366F1), // Indigo
+            Color(0xFF8B5CF6), // Purple
+            Color(0xFFEC4899), // Pink
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.check_circle_outline,
+          color: Colors.white,
+          size: 80,
+        ),
+      ),
+    );
   }
 
   @override
@@ -432,7 +638,7 @@ class _CompletedTaskDialog extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              title,
+                              widget.title,
                               style: theme.textTheme.headlineSmall?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -442,7 +648,7 @@ class _CompletedTaskDialog extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              _dateString,
+                              _formatCompletionDate(),
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -450,16 +656,36 @@ class _CompletedTaskDialog extends StatelessWidget {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              _locationString,
-                              style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
+                            _locationLoading
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Getting location...',
+                                        style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    _locationString,
+                                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
+                                    textAlign: TextAlign.center,
+                                  ),
                             const SizedBox(height: 28),
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton(
-                                onPressed: onToggle,
+                                onPressed: widget.onToggle,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color.fromRGBO(255, 255, 255, 0.92),
                                   foregroundColor: Colors.black87,
@@ -473,7 +699,7 @@ class _CompletedTaskDialog extends StatelessWidget {
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton(
-                                onPressed: onCancel,
+                                onPressed: widget.onCancel,
                                 child: const Text('Close'),
                               ),
                             ),
