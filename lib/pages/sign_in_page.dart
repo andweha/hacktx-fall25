@@ -14,7 +14,7 @@ class SignInPage extends StatefulWidget {
   State<SignInPage> createState() => _SignInPageState();
 }
 
-class _SignInPageState extends State<SignInPage> {
+class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
   final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
@@ -23,9 +23,20 @@ class _SignInPageState extends State<SignInPage> {
 
   bool _busy = false;
   String? _error;
+  TabController? _tabController;
+  TabController? _upgradeTabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _upgradeTabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   void dispose() {
+    _tabController?.dispose();
+    _upgradeTabController?.dispose();
     _usernameCtrl.dispose();
     _passCtrl.dispose();
     _nameCtrl.dispose();
@@ -100,11 +111,11 @@ class _SignInPageState extends State<SignInPage> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 
                 // Header
                 const Text(
@@ -116,7 +127,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
           if (_error != null) ...[
                   Container(
@@ -327,125 +338,9 @@ class _SignInPageState extends State<SignInPage> {
 
         const SizedBox(height: 20),
 
-        // Google sign in section
-            if (kIsWeb)
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white,
-                  Color(0xFFF8F9FA),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF4285F4), Color(0xFF34A853)],
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.login,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Sign in with Google',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3748),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFE2E8F0),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        setState(() {
-                          _busy = true;
-                          _error = null;
-                        });
-                        try {
-                          final provider = GoogleAuthProvider()
-                            ..setCustomParameters({'prompt': 'select_account'});
-                          final cred = await FirebaseAuth.instance
-                              .signInWithPopup(provider);
-                          await bootstrapUserDocs(cred.user!.uid);
-                          
-                          // The auth state change will automatically redirect to MainNavigation
-                        } catch (e) {
-                          _setErr(e);
-                        } finally {
-                          if (mounted) setState(() => _busy = false);
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Sign in with Google',
-                        style: TextStyle(
-                          color: Color(0xFF667EEA),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        const SizedBox(height: 16),
-
-        // Username/Password section
+        // Tabbed authentication section
         Container(
+          constraints: const BoxConstraints(minHeight: 400),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
@@ -464,243 +359,433 @@ class _SignInPageState extends State<SignInPage> {
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF38A169), Color(0xFF2F855A)],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+          child: Column(
+            children: [
+              // Tab bar
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7FAFC),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: TabBar(
+                  controller: _tabController!,
+                  indicator: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                     ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Sign in with Username',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D3748),
-                      ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: const Color(0xFF718096),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  tabs: const [
+                    Tab(
+                      icon: Icon(Icons.login, size: 18),
+                      text: 'Google',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.person, size: 18),
+                      text: 'Username',
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _signinUsernameCtrl,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-              decoration: const InputDecoration(
-                      labelText: 'Username',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF718096),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(
-                        Icons.person_outline,
-                        color: Color(0xFF667EEA),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-              controller: _signinPassCtrl,
-              obscureText: true,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-              decoration: const InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF718096),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(
-                        Icons.lock_outline,
-                        color: Color(0xFF667EEA),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                Row(
+              ),
+              
+              // Tab content
+              SizedBox(
+                height: 400,
+                child: TabBarView(
+                  controller: _tabController!,
                   children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF38A169), Color(0xFF2F855A)],
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF38A169).withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-              onPressed: _busy
-                  ? null
-                  : () async {
-                      setState(() {
-                        _busy = true;
-                        _error = null;
-                      });
-                      try {
-                        final cred = await AuthService.instance
-                                        .signInUsernamePassword(
-                                            _signinUsernameCtrl.text.trim(),
-                                _signinPassCtrl.text);
-                        await bootstrapUserDocs(cred.user!.uid);
-                        
-                        // The auth state change will automatically redirect to MainNavigation
-                      } catch (e) {
-                        _setErr(e);
-                      } finally {
-                        if (mounted) setState(() => _busy = false);
-                      }
-                    },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Sign in',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: const Color(0xFFE2E8F0),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: OutlinedButton(
-              onPressed: _busy
-                  ? null
-                  : () async {
-                      setState(() {
-                        _busy = true;
-                        _error = null;
-                      });
-                      try {
-                        final cred = await AuthService.instance
-                                        .registerUsernamePassword(
-                                            _signinUsernameCtrl.text.trim(),
-                                _signinPassCtrl.text);
-                        await bootstrapUserDocs(cred.user!.uid);
-                        
-                        // The auth state change will automatically redirect to MainNavigation
-                      } catch (e) {
-                        _setErr(e);
-                      } finally {
-                        if (mounted) setState(() => _busy = false);
-                      }
-                    },
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide.none,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Create account',
-                            style: TextStyle(
-                              color: Color(0xFF667EEA),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildGoogleTab(),
+                    _buildUsernameTab(),
                   ],
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+
+      ],
+    );
+  }
+
+  Widget _buildGoogleTab() {
+    if (!kIsWeb) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text(
+            'Google sign-in is only available on web',
+            style: TextStyle(
+              color: Color(0xFF718096),
+              fontSize: 16,
             ),
           ),
         ),
-      ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          const Text(
+            'Sign in with Google',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D3748),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Quick and secure sign-in using your Google account',
+            style: TextStyle(
+              color: Color(0xFF718096),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF4285F4), Color(0xFF34A853)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4285F4).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      setState(() {
+                        _busy = true;
+                        _error = null;
+                      });
+                      try {
+                        final provider = GoogleAuthProvider()
+                          ..setCustomParameters({'prompt': 'select_account'});
+                        final cred = await FirebaseAuth.instance
+                            .signInWithPopup(provider);
+                        await bootstrapUserDocs(cred.user!.uid);
+                        
+                        // Navigate directly to main navigation
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
+                      } catch (e) {
+                        _setErr(e);
+                      } finally {
+                        if (mounted) setState(() => _busy = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.login,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Sign in with Google',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (_busy) ...[
+                    const SizedBox(width: 8),
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsernameTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          const Text(
+            'Sign in with Username',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D3748),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Create an account or sign in with your username and password',
+            style: TextStyle(
+              color: Color(0xFF718096),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Username field
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _signinUsernameCtrl,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Username',
+                labelStyle: TextStyle(
+                  color: Color(0xFF718096),
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.all(16),
+                prefixIcon: Icon(
+                  Icons.person_outline,
+                  color: Color(0xFF667EEA),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Password field
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _signinPassCtrl,
+              obscureText: true,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                labelStyle: TextStyle(
+                  color: Color(0xFF718096),
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.all(16),
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  color: Color(0xFF667EEA),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF38A169), Color(0xFF2F855A)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF38A169).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _busy
+                        ? null
+                        : () async {
+                            setState(() {
+                              _busy = true;
+                              _error = null;
+                            });
+                            try {
+                              final cred = await AuthService.instance
+                                  .signInUsernamePassword(
+                                      _signinUsernameCtrl.text.trim(),
+                                      _signinPassCtrl.text);
+                              await bootstrapUserDocs(cred.user!.uid);
+                              
+                              // Navigate directly to main navigation
+                              if (mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (_) => const MainNavigation()),
+                                  (route) => false,
+                                );
+                              }
+                            } catch (e) {
+                              _setErr(e);
+                            } finally {
+                              if (mounted) setState(() => _busy = false);
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Sign in',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: OutlinedButton(
+                    onPressed: _busy
+                        ? null
+                        : () async {
+                            setState(() {
+                              _busy = true;
+                              _error = null;
+                            });
+                            try {
+                              final cred = await AuthService.instance
+                                  .registerUsernamePassword(
+                                      _signinUsernameCtrl.text.trim(),
+                                      _signinPassCtrl.text);
+                              await bootstrapUserDocs(cred.user!.uid);
+                              
+                              // The auth state change will automatically redirect to MainNavigation
+                            } catch (e) {
+                              _setErr(e);
+                            } finally {
+                              if (mounted) setState(() => _busy = false);
+                            }
+                          },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide.none,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Create account',
+                      style: TextStyle(
+                        color: Color(0xFF667EEA),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -727,203 +812,183 @@ class _SignInPageState extends State<SignInPage> {
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Column(
+            children: [
+              // Header with close button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFED8936), Color(0xFFDD6B20)],
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFED8936), Color(0xFFDD6B20)],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.upgrade,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.upgrade,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Upgrade your guest account',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D3748),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Upgrade your guest account',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D3748),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Color(0xFF718096),
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-
-                const SizedBox(height: 28),
-
-            if (kIsWeb)
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF667EEA).withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        setState(() {
-                          _busy = true;
-                          _error = null;
-                        });
-                        try {
-                          final provider = GoogleAuthProvider()
-                            ..setCustomParameters({'prompt': 'select_account'});
-                          await FirebaseAuth.instance.currentUser!
-                              .linkWithPopup(provider);
-
-                          final user = FirebaseAuth.instance.currentUser!;
-
-                          await bootstrapUserDocs(user.uid);
-                          
-                          // The auth state change will automatically redirect to MainNavigation
-                        } catch (e) {
-                          _setErr(e);
-                        } finally {
-                          if (mounted) setState(() => _busy = false);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Link Google (keep my data)',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(height: 24),
-
-                // Username field for account creation
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _usernameCtrl,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Username',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF718096),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(
-                        Icons.person_outline,
-                        color: Color(0xFF667EEA),
-                        size: 20,
-                      ),
-                    ),
+              ),
+              
+              // Tab bar
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7FAFC),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Password field for account creation
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                child: TabBar(
+                  controller: _upgradeTabController!,
+                  indicator: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                    ),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
-                  child: TextField(
-                    controller: _passCtrl,
-                    obscureText: true,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF718096),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(
-                        Icons.lock_outline,
-                        color: Color(0xFF667EEA),
-                        size: 20,
-                      ),
-                    ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: const Color(0xFF718096),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  tabs: const [
+                    Tab(
+                      icon: Icon(Icons.login, size: 18),
+                      text: 'Google',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.person, size: 18),
+                      text: 'Username',
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
+              ),
+              
+              // Tab content
+              SizedBox(
+                height: 340,
+                child: TabBarView(
+                  controller: _upgradeTabController!,
+                  children: [
+                    _buildUpgradeGoogleTab(),
+                    _buildUpgradeUsernameTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: OutlinedButton.icon(
+  Widget _buildUpgradeGoogleTab() {
+    if (!kIsWeb) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text(
+            'Google sign-in is only available on web',
+            style: TextStyle(
+              color: Color(0xFF718096),
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const Text(
+            'Link Google Account',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D3748),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Link your Google account to keep your data',
+            style: TextStyle(
+              color: Color(0xFF718096),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF667EEA).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
               onPressed: _busy
                   ? null
                   : () async {
@@ -932,17 +997,16 @@ class _SignInPageState extends State<SignInPage> {
                         _error = null;
                       });
                       try {
-                              await AuthService.instance.linkUsernamePassword(
-                                  _usernameCtrl.text.trim(), _passCtrl.text);
+                        final provider = GoogleAuthProvider()
+                          ..setCustomParameters({'prompt': 'select_account'});
+                        await FirebaseAuth.instance.currentUser!
+                            .linkWithPopup(provider);
+
                         final user = FirebaseAuth.instance.currentUser!;
-                        await _ensureProfile(user,
-                            preferredName: _nameCtrl.text.trim());
-                        await FirebaseFirestore.instance
-                            .collection('user_profiles')
-                            .doc(user.uid)
-                            .set({'anon': false}, SetOptions(merge: true));
+                        await bootstrapUserDocs(user.uid);
+                        
+                        // Navigate directly to main navigation
                         if (mounted) {
-                          // Navigate to main board instead of just popping
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(builder: (_) => const MainNavigation()),
                             (route) => false,
@@ -954,242 +1018,178 @@ class _SignInPageState extends State<SignInPage> {
                         if (mounted) setState(() => _busy = false);
                       }
                     },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide.none,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.link,
-                      color: Color(0xFF667EEA),
-                      size: 20,
-                    ),
-                    label: const Text(
-                      'Create account (keep my data)',
-                      style: TextStyle(
-                        color: Color(0xFF667EEA),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.login,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Link Google (keep my data)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-            ),
-
-            const SizedBox(height: 24),
-
-        Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white,
-                Color(0xFFF8F9FA),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.login,
+                  if (_busy) ...[
+                    const SizedBox(width: 8),
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
                         color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Already have an account? Sign in instead:',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D3748),
                       ),
                     ),
                   ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpgradeUsernameTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          const Text(
+            'Create Username Account',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D3748),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Create a permanent account with username and password',
+            style: TextStyle(
+              color: Color(0xFF718096),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Username field
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                const SizedBox(height: 28),
-
-            if (kIsWeb)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFE2E8F0),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        setState(() {
-                          _busy = true;
-                          _error = null;
-                        });
-                        try {
-                          final provider = GoogleAuthProvider()
-                            ..setCustomParameters({'prompt': 'select_account'});
-                          final cred = await FirebaseAuth.instance
-                              .signInWithPopup(provider);
-                          await bootstrapUserDocs(cred.user!.uid);
-                          
-                          // The auth state change will automatically redirect to MainNavigation
-                        } catch (e) {
-                          _setErr(e);
-                        } finally {
-                          if (mounted) setState(() => _busy = false);
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Sign in with Google',
-                        style: TextStyle(
-                          color: Color(0xFF667EEA),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(height: 24),
-
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _signinUsernameCtrl,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+              ],
+            ),
+            child: TextField(
+              controller: _usernameCtrl,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
               decoration: const InputDecoration(
-                      labelText: 'Username',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF718096),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(
-                        Icons.person_outline,
-                        color: Color(0xFF667EEA),
-                        size: 20,
-                      ),
-                    ),
-                  ),
+                labelText: 'Username',
+                labelStyle: TextStyle(
+                  color: Color(0xFF718096),
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-              controller: _signinPassCtrl,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.all(16),
+                prefixIcon: Icon(
+                  Icons.person_outline,
+                  color: Color(0xFF667EEA),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Password field
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _passCtrl,
               obscureText: true,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
               decoration: const InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: TextStyle(
-                        color: Color(0xFF718096),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(
-                        Icons.lock_outline,
-                        color: Color(0xFF667EEA),
-                        size: 20,
-                      ),
-                    ),
-                  ),
+                labelText: 'Password',
+                labelStyle: TextStyle(
+                  color: Color(0xFF718096),
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(height: 28),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.all(16),
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  color: Color(0xFF667EEA),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
 
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF38A169), Color(0xFF2F855A)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF38A169).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
+          // Create account button
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: OutlinedButton.icon(
               onPressed: _busy
                   ? null
                   : () async {
@@ -1198,42 +1198,51 @@ class _SignInPageState extends State<SignInPage> {
                         _error = null;
                       });
                       try {
-                        final cred = await AuthService.instance
-                                  .signInUsernamePassword(
-                                      _signinUsernameCtrl.text.trim(),
-                                _signinPassCtrl.text);
-                        await bootstrapUserDocs(cred.user!.uid);
-                        
-                        // The auth state change will automatically redirect to MainNavigation
+                        await AuthService.instance.linkUsernamePassword(
+                            _usernameCtrl.text.trim(), _passCtrl.text);
+                        final user = FirebaseAuth.instance.currentUser!;
+                        await _ensureProfile(user,
+                            preferredName: _nameCtrl.text.trim());
+                        await FirebaseFirestore.instance
+                            .collection('user_profiles')
+                            .doc(user.uid)
+                            .set({'anon': false}, SetOptions(merge: true));
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
                       } catch (e) {
                         _setErr(e);
                       } finally {
                         if (mounted) setState(() => _busy = false);
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Sign in with Username',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide.none,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
+              ),
+              icon: const Icon(
+                Icons.link,
+                color: Color(0xFF667EEA),
+                size: 20,
+              ),
+              label: const Text(
+                'Create account (keep my data)',
+                style: TextStyle(
+                  color: Color(0xFF667EEA),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
