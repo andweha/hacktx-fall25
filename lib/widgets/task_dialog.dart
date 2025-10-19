@@ -283,7 +283,6 @@ class _CompletedTaskDialog extends StatelessWidget {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 28),
-                            /* DO NOT DELETE - TEMPORARILY DISABLED MARK INCOMPLETE BUTTON
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton(
@@ -306,7 +305,6 @@ class _CompletedTaskDialog extends StatelessWidget {
                                 child: const Text('Mark Incomplete'),
                               ),
                             ),
-                            */
                           ],
                         ),
                       ),
