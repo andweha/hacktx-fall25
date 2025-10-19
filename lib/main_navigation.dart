@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'pages/profile_page.dart';
+import 'pages/friends_page.dart';
 import 'settings_page.dart';
 import 'mainboard_page.dart';
 import 'feed_page.dart';
@@ -17,7 +17,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = [
     const MainBoardPage(),
     const FeedPage(),
-    const ProfilePage(),
+    const FriendsPage(),
     const SettingsPage(),
   ];
 
@@ -45,8 +45,8 @@ class _MainNavigationState extends State<MainNavigation> {
             label: 'Feed',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
+            icon: Icon(Icons.people),
+            label: 'Friends',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

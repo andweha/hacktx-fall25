@@ -16,21 +16,29 @@ class MainBoardPage extends StatefulWidget {
 }
 
 class _MainBoardPageState extends State<MainBoardPage> {
+  // Incomplete tasks - muted gray colors
   static const _TilePalette _greyPalette = _TilePalette(
-    top: Color(0xFFDCD4BB),
-    bottom: Color(0xFFB6AB90),
+    top: Color(0xFFE5E5E5),
+    bottom: Color(0xFFCCCCCC),
   );
+  
+  // Completed tasks - vibrant, distinct colors
   static const List<_TilePalette> _completedPalettes = [
-    _TilePalette(top: Color(0xFFCFE7F5), bottom: Color(0xFFAAC5D9)), // blue
-    _TilePalette(top: Color(0xFFCDEDE0), bottom: Color(0xFFA7CCBD)), // mint
-    _TilePalette(top: Color(0xFFF7E6D4), bottom: Color(0xFFE1C4A3)), // peach
-    _TilePalette(top: Color(0xFFE4DDF6), bottom: Color(0xFFBFB6D6)), // lavender
-    _TilePalette(
-      top: Color(0xFFF6F1D6),
-      bottom: Color(0xFFD9CCA3),
-    ), // light gold
-    _TilePalette(top: Color(0xFFDFF2F2), bottom: Color(0xFFB8D2D1)), // aqua
+    _TilePalette(top: Color(0xFF4CAF50), bottom: Color(0xFF388E3C)), // green
+    _TilePalette(top: Color(0xFF2196F3), bottom: Color(0xFF1976D2)), // blue
+    _TilePalette(top: Color(0xFFFF9800), bottom: Color(0xFFF57C00)), // orange
+    _TilePalette(top: Color(0xFF9C27B0), bottom: Color(0xFF7B1FA2)), // purple
+    _TilePalette(top: Color(0xFFE91E63), bottom: Color(0xFFC2185B)), // pink
+    _TilePalette(top: Color(0xFF00BCD4), bottom: Color(0xFF0097A7)), // cyan
+    _TilePalette(top: Color(0xFF8BC34A), bottom: Color(0xFF689F38)), // light green
+    _TilePalette(top: Color(0xFFFF5722), bottom: Color(0xFFD84315)), // deep orange
   ];
+  
+  // Special color for first three-in-a-row completion
+  static const _TilePalette _threeInRowPalette = _TilePalette(
+    top: Color(0xFFFFD700), // gold
+    bottom: Color(0xFFB8860B), // dark goldenrod
+  );
 
   final List<String> taskDataset = [
     'Wake up before 7 AM and get out of bed immediately',
@@ -94,10 +102,118 @@ class _MainBoardPageState extends State<MainBoardPage> {
     BoardService.ensureSeed(); // seed 3x3 if missing
   }
 
-  _TilePalette _completedPaletteFor(int index, Task task) {
-    final seed = task.title.hashCode ^ index;
-    final paletteIndex = seed.abs() % _completedPalettes.length;
-    return _completedPalettes[paletteIndex];
+  List<int> _getFirstThreeInRow(List<Task> tasks) {
+    // Get all possible three-in-a-row combinations
+    final List<List<int>> allThreeInRows = [
+      // Rows
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      // Columns  
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      // Diagonals
+      [0, 4, 8], [2, 4, 6],
+    ];
+    
+    // Find all completed three-in-a-rows
+    final List<List<int>> completedThreeInRows = [];
+    for (final indices in allThreeInRows) {
+      if (indices.every((i) => tasks[i].completed)) {
+        completedThreeInRows.add(indices);
+      }
+    }
+    
+    if (completedThreeInRows.isEmpty) return [];
+    
+    // Find the three-in-a-row that was completed first based on timestamps
+    List<int>? earliestThreeInRow;
+    DateTime? earliestTime;
+    
+    for (final indices in completedThreeInRows) {
+      // Get the latest completion time for this three-in-a-row
+      DateTime? latestCompletionTime;
+      for (final index in indices) {
+        if (tasks[index].completedAt != null) {
+          try {
+            final completionTime = DateTime.parse(tasks[index].completedAt!);
+            if (latestCompletionTime == null || completionTime.isAfter(latestCompletionTime)) {
+              latestCompletionTime = completionTime;
+            }
+          } catch (e) {
+            // Skip invalid timestamps
+          }
+        }
+      }
+      
+      // If this three-in-a-row has a valid completion time, check if it's the earliest
+      if (latestCompletionTime != null) {
+        if (earliestTime == null || latestCompletionTime.isBefore(earliestTime)) {
+          earliestTime = latestCompletionTime;
+          earliestThreeInRow = indices;
+        }
+      }
+    }
+    
+    return earliestThreeInRow ?? [];
+  }
+
+  List<_TilePalette> _calculateAllPalettes(List<Task> allTasks) {
+    final firstThreeInRow = _getFirstThreeInRow(allTasks);
+    final List<_TilePalette> palettes = List.filled(9, _greyPalette);
+    final List<int> colorAssignments = List.filled(9, -1); // -1 means not assigned yet
+    
+    // First pass: assign gold to three-in-a-row
+    for (final index in firstThreeInRow) {
+      palettes[index] = _threeInRowPalette;
+      colorAssignments[index] = -2; // -2 means gold (special)
+    }
+    
+    // Second pass: assign colors to remaining completed tasks
+    for (int i = 0; i < 9; i++) {
+      if (allTasks[i].completed && colorAssignments[i] == -1) {
+        // Get colors used by adjacent tiles
+        final Set<int> usedColors = <int>{};
+        
+        // Check horizontal neighbors
+        if (i % 3 > 0) { // not leftmost column
+          final leftIndex = i - 1;
+          if (colorAssignments[leftIndex] >= 0) {
+            usedColors.add(colorAssignments[leftIndex]);
+          }
+        }
+        if (i % 3 < 2) { // not rightmost column
+          final rightIndex = i + 1;
+          if (colorAssignments[rightIndex] >= 0) {
+            usedColors.add(colorAssignments[rightIndex]);
+          }
+        }
+        
+        // Check vertical neighbors
+        if (i >= 3) { // not top row
+          final topIndex = i - 3;
+          if (colorAssignments[topIndex] >= 0) {
+            usedColors.add(colorAssignments[topIndex]);
+          }
+        }
+        if (i < 6) { // not bottom row
+          final bottomIndex = i + 3;
+          if (colorAssignments[bottomIndex] >= 0) {
+            usedColors.add(colorAssignments[bottomIndex]);
+          }
+        }
+        
+        // Find first available color
+        final seed = allTasks[i].title.hashCode ^ i;
+        int paletteIndex = seed.abs() % _completedPalettes.length;
+        
+        while (usedColors.contains(paletteIndex)) {
+          paletteIndex = (paletteIndex + 1) % _completedPalettes.length;
+        }
+        
+        colorAssignments[i] = paletteIndex;
+        palettes[i] = _completedPalettes[paletteIndex];
+      }
+    }
+    
+    return palettes;
   }
 
   List<Task> _tasksFrom(List rawCells) {
@@ -105,14 +221,15 @@ class _MainBoardPageState extends State<MainBoardPage> {
       // Add bounds checking to prevent RangeError
       if (rawCells.isEmpty || i >= rawCells.length) {
         print('Error: rawCells is empty or index $i is out of bounds (length: ${rawCells.length})');
-        return Task(title: taskDataset[i % taskDataset.length], completed: false);
+        return Task(title: taskDataset[i % taskDataset.length], completed: false, completedAt: null);
       }
       
       final m = Map<String, dynamic>.from(rawCells[i]);
       final title =
           (m['title'] as String?) ?? taskDataset[i % taskDataset.length];
       final isDone = (m['status'] as String?) == 'done';
-      return Task(title: title, completed: isDone);
+      final completedAt = m['completedAt'] as String?;
+      return Task(title: title, completed: isDone, completedAt: completedAt);
     });
   }
 
@@ -414,12 +531,10 @@ class _MainBoardPageState extends State<MainBoardPage> {
                               ),
                           itemBuilder: (context, index) {
                             final task = tasks[index];
-                            final palette = task.completed
-                                ? _completedPaletteFor(index, task)
-                                : _greyPalette;
+                            final palettes = _calculateAllPalettes(tasks);
                             return _TaskTile(
                               task: task,
-                              palette: palette,
+                              palette: palettes[index],
                               onTap: () => _showTaskDialog(index, cells),
                             );
                           },
@@ -440,7 +555,8 @@ class _MainBoardPageState extends State<MainBoardPage> {
 class Task {
   final String title;
   final bool completed;
-  const Task({required this.title, required this.completed});
+  final String? completedAt;
+  const Task({required this.title, required this.completed, this.completedAt});
 }
 
 class _TilePalette {
@@ -474,7 +590,10 @@ class _TaskTileState extends State<_TaskTile> {
 
   @override
   Widget build(BuildContext context) {
-    const Color textColor = Color(0xFF4B4034);
+    // Use white text for completed tasks, dark text for incomplete
+    final Color textColor = widget.task.completed 
+        ? Colors.white 
+        : const Color(0xFF4B4034);
     const duration = Duration(milliseconds: 140);
     const double baseShadowOffset = 18.0;
     const double pressedShift = 10.0;
@@ -530,7 +649,7 @@ class _TaskTileState extends State<_TaskTile> {
                     child: Text(
                       widget.task.title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: textColor,

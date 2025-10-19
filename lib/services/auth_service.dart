@@ -46,12 +46,31 @@ class AuthService {
     return _auth.signInWithPopup(provider);
   }
 
-  /// Email/Password sign-in (when logged out)
+  /// Username/Password sign-in (when logged out) - converts username to email format
+  Future<UserCredential> signInUsernamePassword(String username, String password) {
+    final email = '$username@tasktracker.local';
+    return _auth.signInWithEmailAndPassword(email: email, password: password);
+  }
+
+  /// Register a brand-new username/password account (when logged out)
+  Future<UserCredential> registerUsernamePassword(String username, String password) {
+    final email = '$username@tasktracker.local';
+    return _auth.createUserWithEmailAndPassword(email: email, password: password);
+  }
+
+  /// Link username/password to the CURRENT account (upgrade guest, keep UID)
+  Future<void> linkUsernamePassword(String username, String password) async {
+    final email = '$username@tasktracker.local';
+    final cred = EmailAuthProvider.credential(email: email, password: password);
+    await _auth.currentUser!.linkWithCredential(cred);
+  }
+
+  /// Email/Password sign-in (when logged out) - kept for backward compatibility
   Future<UserCredential> signInEmailPassword(String email, String password) {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
-  /// Register a brand-new email/password account (when logged out)
+  /// Register a brand-new email/password account (when logged out) - kept for backward compatibility
   Future<UserCredential> registerEmailPassword(String email, String password) {
     return _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
