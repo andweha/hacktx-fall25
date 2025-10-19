@@ -206,35 +206,51 @@ class _SingleBoardStats extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatChip(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const spacing = 16.0;
+                    final isNarrow = constraints.maxWidth < 520;
+                    final chipWidth = isNarrow
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - (2 * spacing)) / 3;
+
+                    final chips = [
+                      _StatChip(
                         title: 'This board',
                         value: '$done/9',
                         icon: Icons.grid_view,
                         color: const Color(0xFF667EEA),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _StatChip(
+                      _StatChip(
                         title: 'Completion',
                         value: '${(rate * 100).toStringAsFixed(0)}%',
                         icon: Icons.check_circle,
                         color: const Color(0xFF38A169),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _StatChip(
+                      _StatChip(
                         title: 'Updated',
                         value: updated == null ? '—' : _relTime(updated),
                         icon: Icons.schedule,
                         color: const Color(0xFFED8936),
                       ),
-                    ),
-                  ],
+                    ];
+
+                    final width =
+                        chipWidth.clamp(0, constraints.maxWidth).toDouble();
+
+                    return Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: chips
+                          .map(
+                            (chip) => SizedBox(
+                              width: width,
+                              child: chip,
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
                 ),
               ],
             ),

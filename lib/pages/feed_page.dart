@@ -106,94 +106,141 @@ class _FeedPageState extends State<FeedPage> {
       return const Center(child: Text('No user session'));
     }
     
-    return StreamBuilder<DocumentSnapshot>(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('boards')
-          .doc(userId)
+          .collection('friendships')
+          .where('members', arrayContains: userId)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, friendsSnapshot) {
+        if (friendsSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Center(
-            child: Text(
-              'No completed tasks yet!\nComplete some tasks to see them here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-          );
+        final friendIds = <String>{};
+        if (friendsSnapshot.hasData) {
+          for (final doc in friendsSnapshot.data!.docs) {
+            final members = (doc.data()['members'] as List?) ?? [];
+            for (final member in members) {
+              if (member is String && member != userId) {
+                friendIds.add(member);
+              }
+            }
+          }
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final cells = List<Map<String, dynamic>>.from(
-          (data['cells'] as List).map((e) => Map<String, dynamic>.from(e as Map))
-        );
-        
-        // Filter completed tasks
-        final completedTasks = cells.where((cell) => 
-          cell['status'] == 'done' && 
-          cell['imageUrl'] != null && 
-          cell['imageUrl'].toString().isNotEmpty
-        ).toList();
-        
-        // Sort by completion date (newest first)
-        completedTasks.sort((a, b) {
-          final aDate = a['completedAt'] as String?;
-          final bDate = b['completedAt'] as String?;
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-          return bDate.compareTo(aDate);
-        });
+        final targetIds = <String>{userId, ...friendIds};
 
-        if (completedTasks.isEmpty) {
-          return const Center(
-            child: Text(
-              'No completed tasks with images yet!\nComplete tasks with photos to see them here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-          );
-        }
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // Responsive grid based on screen width
-            final screenWidth = constraints.maxWidth;
-            int crossAxisCount;
-            double childAspectRatio;
-            double spacing;
-            
-            if (screenWidth < 600) {
-              // Mobile: 2 columns
-              crossAxisCount = 2;
-              childAspectRatio = 0.75;
-              spacing = 12;
-            } else if (screenWidth < 900) {
-              // Tablet: 3 columns
-              crossAxisCount = 3;
-              childAspectRatio = 0.8;
-              spacing = 16;
-            } else {
-              // Desktop: 4 columns
-              crossAxisCount = 4;
-              childAspectRatio = 0.85;
-              spacing = 20;
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('boards').snapshots(),
+          builder: (context, boardsSnapshot) {
+            if (boardsSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
 
-            return GridView.builder(
-              padding: EdgeInsets.all(spacing),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: childAspectRatio,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
-              ),
-              itemCount: completedTasks.length,
-              itemBuilder: (context, index) {
-                return _buildTaskCard(completedTasks[index]);
+            final docs = boardsSnapshot.data?.docs ?? [];
+            final relevantBoards = docs
+                .where((doc) => targetIds.contains(doc.id))
+                .toList();
+
+            if (relevantBoards.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No completed tasks yet!\nComplete tasks with photos to see them here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              );
+            }
+
+            final completedTasks = <Map<String, dynamic>>[];
+
+            for (final board in relevantBoards) {
+              final boardData = board.data();
+              final cells = boardData['cells'];
+              if (cells is! List) continue;
+
+              for (final cell in cells) {
+                if (cell is! Map) continue;
+                final cellMap = Map<String, dynamic>.from(cell);
+                final status =
+                    (cellMap['status'] as String?)?.toLowerCase() ?? '';
+                final imageUrl = (cellMap['imageUrl'] as String?)?.trim() ?? '';
+                if (status != 'done' || imageUrl.isEmpty) continue;
+
+                final ownerId = board.id;
+                final shortId = ownerId.length > 6
+                    ? ownerId.substring(0, 6)
+                    : ownerId;
+                final ownerLabel = ownerId == userId ? 'You' : '@$shortId';
+
+                cellMap['ownerId'] = ownerId;
+                cellMap['ownerLabel'] = ownerLabel;
+
+                completedTasks.add(cellMap);
+              }
+            }
+
+            completedTasks.sort((a, b) {
+              final aDate = DateTime.tryParse(
+                (a['completedAt'] as String?) ?? '',
+              );
+              final bDate = DateTime.tryParse(
+                (b['completedAt'] as String?) ?? '',
+              );
+              if (aDate == null && bDate == null) return 0;
+              if (aDate == null) return 1;
+              if (bDate == null) return -1;
+              return bDate.compareTo(aDate);
+            });
+
+            if (completedTasks.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No completed tasks with images yet!\nAsk your friends to share their progress.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              );
+            }
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // Responsive grid based on screen width
+                final screenWidth = constraints.maxWidth;
+                int crossAxisCount;
+                double childAspectRatio;
+                double spacing;
+                
+                if (screenWidth < 600) {
+                  // Mobile: 2 columns
+                  crossAxisCount = 2;
+                  childAspectRatio = 0.75;
+                  spacing = 12;
+                } else if (screenWidth < 900) {
+                  // Tablet: 3 columns
+                  crossAxisCount = 3;
+                  childAspectRatio = 0.8;
+                  spacing = 16;
+                } else {
+                  // Desktop: 4 columns
+                  crossAxisCount = 4;
+                  childAspectRatio = 0.85;
+                  spacing = 20;
+                }
+
+                return GridView.builder(
+                  padding: EdgeInsets.all(spacing),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: childAspectRatio,
+                    crossAxisSpacing: spacing,
+                    mainAxisSpacing: spacing,
+                  ),
+                  itemCount: completedTasks.length,
+                  itemBuilder: (context, index) {
+                    return _buildTaskCard(completedTasks[index]);
+                  },
+                );
               },
             );
           },
@@ -207,6 +254,7 @@ class _FeedPageState extends State<FeedPage> {
     final imageUrl = taskData['imageUrl'];
     final completedAt = taskData['completedAt'] as String?;
     final location = taskData['location'] ?? 'Unknown Location';
+    final ownerLabel = taskData['ownerLabel'] as String? ?? 'Friend';
 
     return Container(
       decoration: BoxDecoration(
@@ -258,6 +306,23 @@ class _FeedPageState extends State<FeedPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      ownerLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   const Spacer(),
                   // Task title
                   Text(
