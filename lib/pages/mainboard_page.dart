@@ -23,27 +23,33 @@ class _MainBoardPageState extends State<MainBoardPage> {
     top: Color(0xFFE5E5E5),
     bottom: Color(0xFFCCCCCC),
   );
-  
+
   // Completed tasks - vibrant, distinct colors
   static const List<_TilePalette> _completedPalettes = [
-    _TilePalette(top: Color(0xFF4CAF50), bottom: Color(0xFF388E3C)), // green
+    _TilePalette(
+      top: Color(0xFF607D8B),
+      bottom: Color(0xFF455A64),
+    ), // slate blue-gray
     _TilePalette(top: Color(0xFF2196F3), bottom: Color(0xFF1976D2)), // blue
     _TilePalette(top: Color(0xFFFF9800), bottom: Color(0xFFF57C00)), // orange
     _TilePalette(top: Color(0xFF9C27B0), bottom: Color(0xFF7B1FA2)), // purple
     _TilePalette(top: Color(0xFFE91E63), bottom: Color(0xFFC2185B)), // pink
     _TilePalette(top: Color(0xFF00BCD4), bottom: Color(0xFF0097A7)), // cyan
-    _TilePalette(top: Color(0xFF8BC34A), bottom: Color(0xFF689F38)), // light green
-    _TilePalette(top: Color(0xFFFF5722), bottom: Color(0xFFD84315)), // deep orange
+    _TilePalette(top: Color(0xFF009688), bottom: Color(0xFF00796B)), // teal
+    _TilePalette(
+      top: Color(0xFFFF5722),
+      bottom: Color(0xFFD84315),
+    ), // deep orange
   ];
-  
+
   // Special color for first three-in-a-row completion
   static const _TilePalette _threeInRowPalette = _TilePalette(
-    top: Color(0xFFFFD700), // gold
-    bottom: Color(0xFFB8860B), // dark goldenrod
+    top: Color(0xFF8BC34A), // green
+    bottom: Color.fromARGB(255, 31, 184, 11), // dark goldenrod
   );
 
   final List<String> taskDataset = [
-    'Wake up before 7 AM and get out of bed immediately',
+    'Wake up before 8 AM and get out of bed immediately',
     'Do a 20-minute yoga or stretching session',
     'Meditate in silence for 15 minutes',
     'Journal one full page about your current mindset',
@@ -109,12 +115,12 @@ class _MainBoardPageState extends State<MainBoardPage> {
     final List<List<int>> allThreeInRows = [
       // Rows
       [0, 1, 2], [3, 4, 5], [6, 7, 8],
-      // Columns  
+      // Columns
       [0, 3, 6], [1, 4, 7], [2, 5, 8],
       // Diagonals
       [0, 4, 8], [2, 4, 6],
     ];
-    
+
     // Find all completed three-in-a-rows
     final List<List<int>> completedThreeInRows = [];
     for (final indices in allThreeInRows) {
@@ -122,13 +128,13 @@ class _MainBoardPageState extends State<MainBoardPage> {
         completedThreeInRows.add(indices);
       }
     }
-    
+
     if (completedThreeInRows.isEmpty) return [];
-    
+
     // Find the three-in-a-row that was completed first based on timestamps
     List<int>? earliestThreeInRow;
     DateTime? earliestTime;
-    
+
     for (final indices in completedThreeInRows) {
       // Get the latest completion time for this three-in-a-row
       DateTime? latestCompletionTime;
@@ -136,7 +142,8 @@ class _MainBoardPageState extends State<MainBoardPage> {
         if (tasks[index].completedAt != null) {
           try {
             final completionTime = DateTime.parse(tasks[index].completedAt!);
-            if (latestCompletionTime == null || completionTime.isAfter(latestCompletionTime)) {
+            if (latestCompletionTime == null ||
+                completionTime.isAfter(latestCompletionTime)) {
               latestCompletionTime = completionTime;
             }
           } catch (e) {
@@ -144,77 +151,85 @@ class _MainBoardPageState extends State<MainBoardPage> {
           }
         }
       }
-      
+
       // If this three-in-a-row has a valid completion time, check if it's the earliest
       if (latestCompletionTime != null) {
-        if (earliestTime == null || latestCompletionTime.isBefore(earliestTime)) {
+        if (earliestTime == null ||
+            latestCompletionTime.isBefore(earliestTime)) {
           earliestTime = latestCompletionTime;
           earliestThreeInRow = indices;
         }
       }
     }
-    
+
     return earliestThreeInRow ?? [];
   }
 
   List<_TilePalette> _calculateAllPalettes(List<Task> allTasks) {
     final firstThreeInRow = _getFirstThreeInRow(allTasks);
     final List<_TilePalette> palettes = List.filled(9, _greyPalette);
-    final List<int> colorAssignments = List.filled(9, -1); // -1 means not assigned yet
-    
+    final List<int> colorAssignments = List.filled(
+      9,
+      -1,
+    ); // -1 means not assigned yet
+
     // First pass: assign gold to three-in-a-row
     for (final index in firstThreeInRow) {
       palettes[index] = _threeInRowPalette;
       colorAssignments[index] = -2; // -2 means gold (special)
     }
-    
+
     // Second pass: assign colors to remaining completed tasks
     for (int i = 0; i < 9; i++) {
       if (allTasks[i].completed && colorAssignments[i] == -1) {
         // Get colors used by adjacent tiles
         final Set<int> usedColors = <int>{};
-        
+
         // Check horizontal neighbors
-        if (i % 3 > 0) { // not leftmost column
+        if (i % 3 > 0) {
+          // not leftmost column
           final leftIndex = i - 1;
           if (colorAssignments[leftIndex] >= 0) {
             usedColors.add(colorAssignments[leftIndex]);
           }
         }
-        if (i % 3 < 2) { // not rightmost column
+        if (i % 3 < 2) {
+          // not rightmost column
           final rightIndex = i + 1;
           if (colorAssignments[rightIndex] >= 0) {
             usedColors.add(colorAssignments[rightIndex]);
           }
         }
-        
+
         // Check vertical neighbors
-        if (i >= 3) { // not top row
+        if (i >= 3) {
+          // not top row
           final topIndex = i - 3;
           if (colorAssignments[topIndex] >= 0) {
             usedColors.add(colorAssignments[topIndex]);
           }
         }
-        if (i < 6) { // not bottom row
+        if (i < 6) {
+          // not bottom row
           final bottomIndex = i + 3;
           if (colorAssignments[bottomIndex] >= 0) {
             usedColors.add(colorAssignments[bottomIndex]);
           }
         }
-        
+
         // Find first available color
         final seed = allTasks[i].title.hashCode ^ i;
         int paletteIndex = seed.abs() % _completedPalettes.length;
-        
+
         while (usedColors.contains(paletteIndex)) {
           paletteIndex = (paletteIndex + 1) % _completedPalettes.length;
         }
-        
+
         colorAssignments[i] = paletteIndex;
         palettes[i] = _completedPalettes[paletteIndex];
       }
     }
-    
+
     return palettes;
   }
 
@@ -222,10 +237,16 @@ class _MainBoardPageState extends State<MainBoardPage> {
     return List.generate(9, (i) {
       // Add bounds checking to prevent RangeError
       if (rawCells.isEmpty || i >= rawCells.length) {
-        print('Error: rawCells is empty or index $i is out of bounds (length: ${rawCells.length})');
-        return Task(title: taskDataset[i % taskDataset.length], completed: false, completedAt: null);
+        print(
+          'Error: rawCells is empty or index $i is out of bounds (length: ${rawCells.length})',
+        );
+        return Task(
+          title: taskDataset[i % taskDataset.length],
+          completed: false,
+          completedAt: null,
+        );
       }
-      
+
       final m = Map<String, dynamic>.from(rawCells[i]);
       final title =
           (m['title'] as String?) ?? taskDataset[i % taskDataset.length];
@@ -267,10 +288,12 @@ class _MainBoardPageState extends State<MainBoardPage> {
   void _showTaskDialog(int index, List rawCells) {
     // Add bounds checking to prevent RangeError
     if (rawCells.isEmpty || index >= rawCells.length) {
-      print('Error: rawCells is empty or index $index is out of bounds (length: ${rawCells.length})');
+      print(
+        'Error: rawCells is empty or index $index is out of bounds (length: ${rawCells.length})',
+      );
       return;
     }
-    
+
     final cell = Map<String, dynamic>.from(rawCells[index]);
     final title = (cell['title'] as String?) ?? 'Task';
     final done = (cell['status'] as String?) == 'done';
@@ -287,11 +310,11 @@ class _MainBoardPageState extends State<MainBoardPage> {
     // Get the board reference - handle both Firebase users and guest sessions
     final user = FirebaseAuth.instance.currentUser;
     final guestId = GuestSession.isGuest ? GuestSession.getGuestId() : null;
-    final boardRef = user != null 
+    final boardRef = user != null
         ? FirebaseFirestore.instance.collection('boards').doc(user.uid)
         : guestId != null
-            ? FirebaseFirestore.instance.collection('boards').doc(guestId)
-            : null;
+        ? FirebaseFirestore.instance.collection('boards').doc(guestId)
+        : null;
 
     Future<void> handleToggle() async {
       // 1) Simulate the toggle locally to see if board will be complete
@@ -443,7 +466,7 @@ class _MainBoardPageState extends State<MainBoardPage> {
         }
 
         final cellsData = snap.data!.data()!['cells'];
-        final cells = cellsData is List 
+        final cells = cellsData is List
             ? List<Map<String, dynamic>>.from(cellsData)
             : <Map<String, dynamic>>[];
         final tasks = _tasksFrom(cells);
@@ -596,8 +619,8 @@ class _TaskTileState extends State<_TaskTile> {
   @override
   Widget build(BuildContext context) {
     // Use white text for completed tasks, dark text for incomplete
-    final Color textColor = widget.task.completed 
-        ? Colors.white 
+    final Color textColor = widget.task.completed
+        ? Colors.white
         : const Color(0xFF4B4034);
     const duration = Duration(milliseconds: 140);
     const double baseShadowOffset = 18.0;
