@@ -43,13 +43,21 @@ class BoardService {
 
   /// Toggle a single cell and refresh summary fields.
   static Future<void> toggle(int index, List cells) async {
-    final cell = Map<String, dynamic>.from(cells[index]);
+    // Get the current cell data from Firestore to preserve imageUrl
+    final doc = await _doc().get();
+    if (!doc.exists) return;
+    
+    final currentCells = List<Map<String, dynamic>>.from(
+      (doc.data()!['cells'] as List).map((e) => Map<String, dynamic>.from(e as Map))
+    );
+    
+    final cell = Map<String, dynamic>.from(currentCells[index]);
     final nowDone = cell['status'] != 'done';
     cell['status'] = nowDone ? 'done' : 'open';
     cell['completedAt'] =
         nowDone ? DateTime.now().toIso8601String() : null;
 
-    final newCells = List<Map<String, dynamic>>.from(cells);
+    final newCells = List<Map<String, dynamic>>.from(currentCells);
     newCells[index] = cell;
 
     // 1) Write the updated cells array
