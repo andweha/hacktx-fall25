@@ -3,8 +3,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'services/board_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'services/board_service.dart';
+import 'widgets/task_dialog.dart';
 
 class MainBoardPage extends StatefulWidget {
   const MainBoardPage({super.key});
@@ -142,6 +143,32 @@ class _MainBoardPageState extends State<MainBoardPage> {
     final title = (cell['title'] as String?) ?? 'Task';
     final done = (cell['status'] as String?) == 'done';
 
+    Future<void> handleToggle() async {
+      // 1) Simulate the toggle locally to see if board will be complete
+      final simulated = List<Map<String, dynamic>>.from(rawCells);
+      final newCell = Map<String, dynamic>.from(simulated[index]);
+      final toggledDone = newCell['status'] != 'done';
+      newCell['status'] = toggledDone ? 'done' : 'open';
+      simulated[index] = newCell;
+
+      final completedNow = _isBoardCompleted(_tasksFrom(simulated));
+
+      // Show only on transition false -> true
+      final shouldCelebrate = !boardCompleted && completedNow;
+
+      // 2) Persist
+      await BoardService.toggle(index, rawCells);
+
+      // 3) Close this sheet first
+      if (mounted) Navigator.pop(context);
+
+      // 4) After pop animation, celebrate if needed
+      if (shouldCelebrate) {
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (mounted) _showCelebrationDialog();
+      }
+    }
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -172,154 +199,11 @@ class _MainBoardPageState extends State<MainBoardPage> {
                   begin: const Offset(0, 1),
                   end: Offset.zero,
                 ).animate(curved),
-                child: FractionallySizedBox(
-                  heightFactor: 0.7,
-                  widthFactor: 1,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      child: Material(
-                        elevation: 12,
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 28,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE0D9CC),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                title,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF4B4034),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                done
-                                    ? 'Need to change your mind?'
-                                    : 'Did you finish this task?',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF7A6F62),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const Spacer(),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  icon: Icon(
-                                    done
-                                        ? Icons.undo
-                                        : Icons.check_circle_outline,
-                                  ),
-                                  onPressed: () async {
-                                    // 1) Simulate the toggle locally to see if board will be complete
-                                    final simulated =
-                                        List<Map<String, dynamic>>.from(
-                                          rawCells,
-                                        );
-                                    final newCell = Map<String, dynamic>.from(
-                                      simulated[index],
-                                    );
-                                    final toggledDone =
-                                        newCell['status'] != 'done';
-                                    newCell['status'] = toggledDone
-                                        ? 'done'
-                                        : 'open';
-                                    simulated[index] = newCell;
-
-                                    final completedNow = _isBoardCompleted(
-                                      _tasksFrom(simulated),
-                                    );
-
-                                    // Show only on transition false -> true
-                                    final shouldCelebrate =
-                                        !boardCompleted && completedNow;
-
-                                    // 2) Persist
-                                    await BoardService.toggle(index, rawCells);
-
-                                    // 3) Close this sheet first
-                                    if (mounted) Navigator.pop(context);
-
-                                    // 4) After pop animation, celebrate if needed
-                                    if (shouldCelebrate) {
-                                      await Future.delayed(
-                                        const Duration(milliseconds: 250),
-                                      );
-                                      if (mounted) _showCelebrationDialog();
-                                    }
-                                  },
-                                  label: Text(
-                                    done ? 'Mark Incomplete' : 'Mark Complete',
-                                  ),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: done
-                                        ? const Color(0xFFB59F84)
-                                        : const Color(0xFFEABF4E),
-                                    foregroundColor: const Color(0xFF4B4034),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
-                                      color: Color(0xFFE0D9CC),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Cancel',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF7A6F62),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                child: TaskDialog(
+                  title: title,
+                  completed: done,
+                  onToggle: handleToggle,
+                  onCancel: () => Navigator.pop(context),
                 ),
               ),
             ),
