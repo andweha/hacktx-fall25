@@ -26,6 +26,10 @@ class TaskDialog extends StatelessWidget {
     this.cellIndex,
     this.boardRef,
     this.completedAt,
+    this.dateString,
+    this.locationString,
+    this.backgroundImage, // pass NetworkImage(...) for profile tasks
+    this.details,
   });
 
   final String title;
@@ -39,6 +43,12 @@ class TaskDialog extends StatelessWidget {
   final DocumentReference<Map<String, dynamic>>? boardRef;
   final String? completedAt;
 
+  /// Optional overrides for the completed view (fallbacks keep your current look)
+  final String? dateString;
+  final String? locationString;
+  final ImageProvider? backgroundImage;
+  final String? details;
+
   @override
   Widget build(BuildContext context) {
     return completed
@@ -48,6 +58,10 @@ class TaskDialog extends StatelessWidget {
             onCancel: onCancel,
             imageUrl: imageUrl,
             completedAt: completedAt,
+            dateString: dateString,
+            locationString: locationString,
+            backgroundImage: backgroundImage,
+            details: details,
           )
         : _IncompleteTaskDialog(
             title: title,
@@ -422,11 +436,24 @@ class _CompletedTaskDialog extends StatefulWidget {
     required this.onCancel,
     this.imageUrl,
     this.completedAt,
+    this.dateString,
+    this.locationString,
+    this.backgroundImage,
+    this.details,
   });
 
   final String title;
   final TaskToggleCallback onToggle;
   final VoidCallback onCancel;
+  final String? dateString;
+  final String? locationString;
+  final ImageProvider? backgroundImage;
+  final String? details;
+
+  static const _defaultDate = 'October 12, 12:28 PM';
+  static const _defaultLocation = 'Kyoto, Japan';
+  static const _assetPath = 'assets/images/task_complete_bg.png';
+
   final String? imageUrl;
   final String? completedAt;
 
@@ -721,6 +748,8 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
 
     // Responsive height factor - optimized for image display
     final heightFactor = screenWidth < 600 ? 0.80 : 0.70;
+
+    final img = backgroundImage ?? AssetImage(_assetPath);
 
     return FractionallySizedBox(
       heightFactor: heightFactor,
