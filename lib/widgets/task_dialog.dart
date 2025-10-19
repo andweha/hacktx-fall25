@@ -8,8 +8,12 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 typedef TaskToggleCallback = Future<void> Function();
+
+// Cache for sampled colors to avoid repeated processing
+final Map<String, Color> _colorCache = {};
 
 class TaskDialog extends StatelessWidget {
   const TaskDialog({
@@ -433,12 +437,24 @@ class _CompletedTaskDialog extends StatefulWidget {
 class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
   String _locationString = 'Getting location...';
   bool _locationLoading = true;
+  Color? _bgColor; // sampled from the image
 
   @override
   void initState() {
     super.initState();
     // Start location detection immediately but don't block UI
     _getCurrentLocation();
+    // Run palette generation in background - don't block UI
+    Future.microtask(() => _updatePaletteIfNeeded());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompletedTaskDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      // Run palette generation in background - don't block UI
+      Future.microtask(() => _updatePaletteIfNeeded());
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -534,6 +550,42 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
     }
   }
 
+  Future<void> _updatePaletteIfNeeded() async {
+    final url = widget.imageUrl;
+    if (url == null || url.isEmpty) return;
+
+    // Check cache first - if we've already sampled this image, use cached color
+    if (_colorCache.containsKey(url)) {
+      if (mounted) {
+        setState(() => _bgColor = _colorCache[url]);
+      }
+      return;
+    }
+
+    // Only sample if not cached - run in background
+    Future.microtask(() async {
+      try {
+        final palette = await PaletteGenerator.fromImageProvider(
+          NetworkImage(url),
+          size: const Size(100, 60), // Even smaller sample for speed
+          maximumColorCount: 8, // Reduced color count
+        );
+
+        final picked =
+            palette.dominantColor?.color ??
+            palette.vibrantColor?.color ??
+            palette.darkMutedColor?.color;
+
+        if (mounted && picked != null) {
+          _colorCache[url] = picked; // Cache the result for future use
+          setState(() => _bgColor = picked);
+        }
+      } catch (_) {
+        // Keep fallback color if sampling fails - don't update UI
+      }
+    });
+  }
+
   String _getCityFromCoordinates(double lat, double lng) {
     // Simple coordinate-based city detection for common areas
     // This is more reliable for web than reverse geocoding
@@ -623,14 +675,11 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
   Widget _image() {
     if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
       return Container(
-        // Fill “extra image space” with a matching color.
-        // You can tweak this color to better match each image.
-        color: const Color(0xFF1A0B2E),
+        color: _bgColor ?? const Color(0xFF1A0B2E), // auto color or fallback
         child: Center(
-          // ensures the image is centered in its box
           child: Image.network(
             widget.imageUrl!,
-            fit: BoxFit.contain, // show entire image
+            fit: BoxFit.contain,
             alignment: Alignment.center,
             errorBuilder: (_, __, ___) => _defaultGradient(),
             loadingBuilder: (c, child, p) => p == null
@@ -845,6 +894,14 @@ class _CompletedTaskDialogState extends State<_CompletedTaskDialog> {
                           width: double.infinity,
                           child: OutlinedButton(
                             onPressed: widget.onCancel,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white70),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
                             child: const Text('Close'),
                           ),
                         ),

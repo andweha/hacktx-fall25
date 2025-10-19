@@ -1,6 +1,7 @@
 // lib/services/auth_service.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   AuthService._();
@@ -46,23 +47,67 @@ class AuthService {
     return _auth.signInWithPopup(provider);
   }
 
-  /// Username/Password sign-in (when logged out) - converts username to email format
-  Future<UserCredential> signInUsernamePassword(String username, String password) {
-    final email = '$username@tasktracker.local';
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+  /// Username/Password sign-in (when logged out) - converts username to synthetic email
+  Future<UserCredential> signInUsernamePassword(String username, String password) async {
+    final uname = username.trim().toLowerCase();
+    final syntheticEmail = '$uname@app.local';
+    return _auth.signInWithEmailAndPassword(email: syntheticEmail, password: password);
   }
 
   /// Register a brand-new username/password account (when logged out)
-  Future<UserCredential> registerUsernamePassword(String username, String password) {
-    final email = '$username@tasktracker.local';
-    return _auth.createUserWithEmailAndPassword(email: email, password: password);
+  Future<UserCredential> registerUsernamePassword(String username, String password) async {
+    final uname = username.trim().toLowerCase();
+    final syntheticEmail = '$uname@app.local';
+
+    // Check username uniqueness
+    final nameDoc = FirebaseFirestore.instance.doc('usernames/$uname');
+    final snap = await nameDoc.get();
+    if (snap.exists) {
+      throw Exception('Username is taken.');
+    }
+
+    // Create the account
+    final cred = await _auth.createUserWithEmailAndPassword(
+      email: syntheticEmail, 
+      password: password
+    );
+
+    final uid = cred.user!.uid;
+    
+    // Store user data and username mapping
+    await FirebaseFirestore.instance.doc('users/$uid').set({
+      'username': uname,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    
+    await nameDoc.set({'uid': uid}); // map username -> uid
+    
+    return cred;
   }
 
   /// Link username/password to the CURRENT account (upgrade guest, keep UID)
   Future<void> linkUsernamePassword(String username, String password) async {
-    final email = '$username@tasktracker.local';
-    final cred = EmailAuthProvider.credential(email: email, password: password);
+    final uname = username.trim().toLowerCase();
+    final syntheticEmail = '$uname@app.local';
+    
+    // Check username uniqueness
+    final nameDoc = FirebaseFirestore.instance.doc('usernames/$uname');
+    final snap = await nameDoc.get();
+    if (snap.exists) {
+      throw Exception('Username is taken.');
+    }
+
+    // Link the credential
+    final cred = EmailAuthProvider.credential(email: syntheticEmail, password: password);
     await _auth.currentUser!.linkWithCredential(cred);
+
+    // Store username mapping
+    final uid = _auth.currentUser!.uid;
+    await FirebaseFirestore.instance.doc('users/$uid').update({
+      'username': uname,
+    });
+    
+    await nameDoc.set({'uid': uid}); // map username -> uid
   }
 
   /// Email/Password sign-in (when logged out) - kept for backward compatibility
