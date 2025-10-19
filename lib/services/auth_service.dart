@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'guest_session.dart';
 
 class AuthService {
   AuthService._();
@@ -10,13 +11,36 @@ class AuthService {
   final _auth = FirebaseAuth.instance;
 
   User? get currentUser => _auth.currentUser;
+  
+  /// Check if current user is a guest (session-based)
+  bool get isGuest => GuestSession.isGuest;
+
+  /// Start a guest session (no Firebase auth required)
+  Future<Map<String, String>> startGuestSession() async {
+    GuestSession.startGuestSession();
+    return GuestSession.getGuestInfo();
+  }
 
   /// Ensure there's a signed-in user (anonymous if needed)
   Future<User> ensureAnon() async {
     final u = _auth.currentUser;
-    if (u != null) return u;
-    final cred = await _auth.signInAnonymously();
-    return cred.user!;
+    if (u != null && u.isAnonymous) {
+      // Already have an anonymous user, use it
+      return u;
+    }
+    
+    // Sign out any existing user first (to avoid conflicts)
+    if (u != null) {
+      await _auth.signOut();
+    }
+    
+    try {
+      final cred = await _auth.signInAnonymously();
+      return cred.user!;
+    } catch (e) {
+      print('AuthService.ensureAnon error: $e');
+      rethrow;
+    }
   }
 
   /* ===================== LINK (UPGRADE GUEST) ===================== */

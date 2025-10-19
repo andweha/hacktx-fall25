@@ -3,9 +3,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'pages/friends_page.dart';
-import 'settings_page.dart';
-import 'mainboard_page.dart';
-import 'feed_page.dart';
+import 'pages/settings_page.dart';
+import 'pages/mainboard_page.dart';
+import 'pages/feed_page.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});

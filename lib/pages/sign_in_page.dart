@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/guest_session.dart';
 import '../main_navigation.dart';
 import '../main.dart'; // Import bootstrapUserDocs
 
@@ -106,45 +107,13 @@ class _SignInPageState extends State<SignInPage> {
                 const SizedBox(height: 16),
                 
                 // Header
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Sign in / Link account',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3748),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.close,
-                          color: Color(0xFF718096),
-                          size: 20,
-                        ),
-                        tooltip: 'Close',
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Sign in / Link account',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3748),
+                  ),
                 ),
 
                 const SizedBox(height: 40),
@@ -282,15 +251,29 @@ class _SignInPageState extends State<SignInPage> {
                         _error = null;
                       });
                       try {
-                         // 1) Anonymous sign-in
+                         // Use Firebase Anonymous auth (simpler and more reliable)
+                        print('Guest sign-in: Starting anonymous sign-in');
                         final user = await AuthService.instance.ensureAnon();
+                        print('Guest sign-in: Anonymous user created: ${user.uid}');
                          
-                         // 2) Bootstrap required docs to prevent permission errors
-                         await bootstrapUserDocs(user.uid);
+                         // Bootstrap documents for the anonymous user
+                        try {
+                          await bootstrapUserDocs(user.uid);
+                          print('Guest sign-in: Bootstrap completed');
+                        } catch (bootstrapError) {
+                          print('Guest sign-in: Bootstrap failed but continuing: $bootstrapError');
+                          // Don't fail the entire sign-in process if bootstrap fails
+                        }
                          
-                         // 3) The auth state change will automatically redirect to MainNavigation
-                         // No need to manually navigate - the StreamBuilder in main.dart handles this
+                         // Navigate directly to main navigation
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
                       } catch (e) {
+                        print('Guest sign-in: Error occurred: $e');
                         _setErr(e);
                       } finally {
                         if (mounted) setState(() => _busy = false);
@@ -810,20 +793,10 @@ class _SignInPageState extends State<SignInPage> {
                               .linkWithPopup(provider);
 
                           final user = FirebaseAuth.instance.currentUser!;
-                          final preferred = _nameCtrl.text.trim();
 
-                          await _ensureProfile(user,
-                              preferredName: preferred);
-                          await AuthService.instance.updateAuthDisplayName(
-                              preferred.isEmpty
-                                  ? (user.displayName ?? '')
-                                  : preferred);
-                          await FirebaseFirestore.instance
-                              .collection('user_profiles')
-                              .doc(user.uid)
-                              .set({'anon': false}, SetOptions(merge: true));
-
-                          if (mounted) Navigator.pop(context);
+                          await bootstrapUserDocs(user.uid);
+                          
+                          // The auth state change will automatically redirect to MainNavigation
                         } catch (e) {
                           _setErr(e);
                         } finally {
@@ -1376,7 +1349,7 @@ class _SignInPageState extends State<SignInPage> {
                       });
                       try {
                         await AuthService.instance.signOut();
-                        if (mounted) Navigator.pop(context);
+                        // The auth state change will automatically redirect to SignInPage
                       } catch (e) {
                         _setErr(e);
                       } finally {

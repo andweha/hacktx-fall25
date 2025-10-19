@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:palette_generator/palette_generator.dart';
+import '../services/guest_session.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -36,9 +37,19 @@ class _FeedPageState extends State<FeedPage> {
 
   Widget _buildHeader() {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? 'User';
-    final email = user?.email ?? '';
-    final username = email.isNotEmpty ? email.split('@')[0] : 'user';
+    final isGuest = GuestSession.isGuest;
+    
+    String displayName;
+    String username;
+    
+    if (isGuest) {
+      displayName = 'Guest User';
+      username = 'guest';
+    } else {
+      displayName = user?.displayName ?? 'User';
+      final email = user?.email ?? '';
+      username = email.isNotEmpty ? email.split('@')[0] : 'user';
+    }
     
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -86,10 +97,19 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Widget _buildFeed() {
+    // Get the appropriate user ID for the board reference
+    final user = FirebaseAuth.instance.currentUser;
+    final guestId = GuestSession.isGuest ? GuestSession.getGuestId() : null;
+    final userId = user?.uid ?? guestId;
+    
+    if (userId == null) {
+      return const Center(child: Text('No user session'));
+    }
+    
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('boards')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .doc(userId)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

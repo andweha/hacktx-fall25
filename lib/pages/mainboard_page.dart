@@ -1,12 +1,13 @@
-// lib/mainboard_page.dart
+// lib/pages/mainboard_page.dart
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'services/board_service.dart';
-import 'widgets/task_dialog.dart';
+import '../services/board_service.dart';
+import '../services/guest_session.dart';
+import '../widgets/task_dialog.dart';
 
 class MainBoardPage extends StatefulWidget {
   const MainBoardPage({super.key});
@@ -282,11 +283,14 @@ class _MainBoardPageState extends State<MainBoardPage> {
     print('ImageUrl from Firestore: $imageUrl');
     print('Task completed: $done');
 
-    // Get the board reference
+    // Get the board reference - handle both Firebase users and guest sessions
     final user = FirebaseAuth.instance.currentUser;
+    final guestId = GuestSession.isGuest ? GuestSession.getGuestId() : null;
     final boardRef = user != null 
         ? FirebaseFirestore.instance.collection('boards').doc(user.uid)
-        : null;
+        : guestId != null
+            ? FirebaseFirestore.instance.collection('boards').doc(guestId)
+            : null;
 
     Future<void> handleToggle() async {
       // 1) Simulate the toggle locally to see if board will be complete

@@ -1,8 +1,9 @@
 // lib/pages/friends_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'sign_in_page.dart';
+import '../services/guest_session.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -13,15 +14,21 @@ class FriendsPage extends StatefulWidget {
 class _FriendsPageState extends State<FriendsPage> {
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    final guestId = GuestSession.isGuest ? GuestSession.getGuestId() : null;
+    final uid = user?.uid ?? guestId;
+    
     if (uid == null) {
-      // Redirect to sign-in page instead of showing blank page
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SignInPage()),
-        );
-      });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      // If no user, show a simple message instead of redirecting
+      // The main app's auth state will handle showing the sign-in page
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'Please sign in to access friends',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
     }
 
     final boardRef = FirebaseFirestore.instance.collection('boards').doc(uid);
@@ -78,6 +85,11 @@ class _FriendsPageState extends State<FriendsPage> {
 
             // Board Statistics
             _SingleBoardStats(boardRef: boardRef),
+
+            const SizedBox(height: 24),
+
+            // Copy Friend Code Section
+            _CopyFriendCodeSection(),
 
             const SizedBox(height: 24),
 
@@ -311,7 +323,11 @@ class FriendsSection extends StatefulWidget {
 }
 
 class _FriendsSectionState extends State<FriendsSection> {
-  String get _uid => FirebaseAuth.instance.currentUser!.uid;
+  String get _uid {
+    final user = FirebaseAuth.instance.currentUser;
+    final guestId = GuestSession.isGuest ? GuestSession.getGuestId() : null;
+    return user?.uid ?? guestId ?? '';
+  }
 
   CollectionReference<Map<String, dynamic>> get _profiles =>
       FirebaseFirestore.instance.collection('user_profiles');
@@ -1096,5 +1112,123 @@ class _AddFriendSheetState extends State<_AddFriendSheet> {
     setState(() => _busy = true);
     await widget.onSubmit(code);
     if (mounted) setState(() => _busy = false);
+  }
+}
+
+/* ----------------- Copy Friend Code Section ----------------- */
+
+class _CopyFriendCodeSection extends StatelessWidget {
+  const _CopyFriendCodeSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final guestId = GuestSession.isGuest ? GuestSession.getGuestId() : null;
+    final uid = user?.uid ?? guestId;
+    
+    if (uid == null) return const SizedBox.shrink();
+    
+    final uidShort = uid.substring(0, 6);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.share,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Share Your Friend Code',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Share this code with friends so they can add you:',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      uidShort,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: uid));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Friend code copied: $uidShort'),
+                            backgroundColor: const Color(0xFF667EEA),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.copy,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    tooltip: 'Copy friend code',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
