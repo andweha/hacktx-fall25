@@ -53,7 +53,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const Scaffold(body: Center(child: Text('Not signed in.')));
+      // Redirect to sign-in page instead of showing blank page
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SignInPage()),
+        );
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // Kick off one-time backfill without blocking build
@@ -85,17 +91,8 @@ class _SettingsPageState extends State<SettingsPage> {
             }
 
             if (!snap.hasData || !snap.data!.exists) {
-              return Center(
-                child: FilledButton(
-                onPressed: () async {
-                    await _createDefaultProfile(profRef);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Profile created.')),
-                    );
-                  },
-                  child: const Text('Create profile now'),
-                ),
+              return const Center(
+                child: CircularProgressIndicator(),
               );
             }
 
@@ -659,45 +656,5 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  Future<void> _createDefaultProfile(
-    DocumentReference<Map<String, dynamic>> ref,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser!;
-    final uname = _genUsername();
-
-    // Private profile
-    await ref.set({
-      'displayName': uname,
-      'username': uname,
-      'photoURL': null,
-      'createdAt': FieldValue.serverTimestamp(),
-      'anon': user.isAnonymous,
-      'friendUids': [],
-      'prefs': {},
-    }, SetOptions(merge: true));
-
-    // Public mini profile
-    await FirebaseFirestore.instance
-        .collection('public_profiles')
-        .doc(user.uid)
-        .set({
-      'displayName': uname,
-      'username': uname,
-      'photoURL': null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    await user.updateDisplayName(uname);
-    await user.reload();
-  }
-
-  String _genUsername() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    final now = DateTime.now().microsecondsSinceEpoch;
-    return 'user-${chars[now % chars.length]}'
-        '${chars[(now >> 5) % chars.length]}'
-        '${chars[(now >> 10) % chars.length]}'
-        '${chars[(now >> 15) % chars.length]}';
-  }
 }
+

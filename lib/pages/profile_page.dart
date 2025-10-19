@@ -54,7 +54,13 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const Scaffold(body: Center(child: Text('Not signed in.')));
+      // Redirect to sign-in page instead of showing blank page
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SignInPage()),
+        );
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // Kick off one-time backfill without blocking build

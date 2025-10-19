@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'sign_in_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -14,7 +15,13 @@ class _FriendsPageState extends State<FriendsPage> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const Scaffold(body: Center(child: Text('Not signed in.')));
+      // Redirect to sign-in page instead of showing blank page
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SignInPage()),
+        );
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final boardRef = FirebaseFirestore.instance.collection('boards').doc(uid);

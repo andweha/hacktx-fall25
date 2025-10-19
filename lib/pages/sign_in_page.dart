@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../main_navigation.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -530,7 +531,13 @@ class _SignInPageState extends State<SignInPage> {
                                             _signinUsernameCtrl.text.trim(),
                                 _signinPassCtrl.text);
                         await _ensureProfile(cred.user!);
-                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          // Navigate to main board instead of just popping
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -588,7 +595,13 @@ class _SignInPageState extends State<SignInPage> {
                                             _signinUsernameCtrl.text.trim(),
                                 _signinPassCtrl.text);
                         await _ensureProfile(cred.user!);
-                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          // Navigate to main board instead of just popping
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -870,7 +883,13 @@ class _SignInPageState extends State<SignInPage> {
                             .collection('user_profiles')
                             .doc(user.uid)
                             .set({'anon': false}, SetOptions(merge: true));
-                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          // Navigate to main board instead of just popping
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -1125,7 +1144,13 @@ class _SignInPageState extends State<SignInPage> {
                                       _signinUsernameCtrl.text.trim(),
                                 _signinPassCtrl.text);
                         await _ensureProfile(cred.user!);
-                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          // Navigate to main board instead of just popping
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MainNavigation()),
+                            (route) => false,
+                          );
+                        }
                       } catch (e) {
                         _setErr(e);
                       } finally {
@@ -1282,9 +1307,9 @@ class _SignInPageState extends State<SignInPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 icon: const Icon(

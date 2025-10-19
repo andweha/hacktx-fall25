@@ -32,8 +32,32 @@ class AuthService {
 
   /// Link email/password to the CURRENT account (upgrade guest, keep UID)
   Future<void> linkEmailPassword(String email, String password) async {
-    final cred = EmailAuthProvider.credential(email: email, password: password);
-    await _auth.currentUser!.linkWithCredential(cred);
+    try {
+      final cred = EmailAuthProvider.credential(email: email, password: password);
+      await _auth.currentUser!.linkWithCredential(cred);
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'This email is already linked to another account.';
+          break;
+        case 'weak-password':
+          message = 'Password must be at least 6 characters.';
+          break;
+        case 'invalid-email':
+          message = 'Please enter a valid email address.';
+          break;
+        case 'credential-already-in-use':
+          message = 'This email is already linked to another account.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          message = 'An unexpected error occurred. Please try again.';
+      }
+      throw Exception(message);
+    }
   }
 
   /* ===================== SIGN IN (RETURNING USER) ===================== */
@@ -51,7 +75,35 @@ class AuthService {
   Future<UserCredential> signInUsernamePassword(String username, String password) async {
     final uname = username.trim().toLowerCase();
     final syntheticEmail = '$uname@app.local';
-    return _auth.signInWithEmailAndPassword(email: syntheticEmail, password: password);
+    
+    try {
+      return await _auth.signInWithEmailAndPassword(email: syntheticEmail, password: password);
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'No account found with that username.';
+          break;
+        case 'wrong-password':
+          message = 'Incorrect password.';
+          break;
+        case 'invalid-email':
+          message = 'Please enter a valid username.';
+          break;
+        case 'user-disabled':
+          message = 'This account has been disabled.';
+          break;
+        case 'too-many-requests':
+          message = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          message = 'An unexpected error occurred. Please try again.';
+      }
+      throw Exception(message);
+    }
   }
 
   /// Register a brand-new username/password account (when logged out)
@@ -63,26 +115,47 @@ class AuthService {
     final nameDoc = FirebaseFirestore.instance.doc('usernames/$uname');
     final snap = await nameDoc.get();
     if (snap.exists) {
-      throw Exception('Username is taken.');
+      throw Exception('That username is already taken.');
     }
 
-    // Create the account
-    final cred = await _auth.createUserWithEmailAndPassword(
-      email: syntheticEmail, 
-      password: password
-    );
+    try {
+      // Create the account
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: syntheticEmail, 
+        password: password
+      );
 
-    final uid = cred.user!.uid;
-    
-    // Store user data and username mapping
-    await FirebaseFirestore.instance.doc('users/$uid').set({
-      'username': uname,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    
-    await nameDoc.set({'uid': uid}); // map username -> uid
-    
-    return cred;
+      final uid = cred.user!.uid;
+      
+      // Store user data and username mapping
+      await FirebaseFirestore.instance.doc('users/$uid').set({
+        'username': uname,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      
+      await nameDoc.set({'uid': uid}); // map username -> uid
+      
+      return cred;
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'That username is already taken.';
+          break;
+        case 'weak-password':
+          message = 'Password must be at least 6 characters.';
+          break;
+        case 'invalid-email':
+          message = 'Please choose a valid username.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          message = 'An unexpected error occurred. Please try again.';
+      }
+      throw Exception(message);
+    }
   }
 
   /// Link username/password to the CURRENT account (upgrade guest, keep UID)
@@ -94,20 +167,44 @@ class AuthService {
     final nameDoc = FirebaseFirestore.instance.doc('usernames/$uname');
     final snap = await nameDoc.get();
     if (snap.exists) {
-      throw Exception('Username is taken.');
+      throw Exception('That username is already taken.');
     }
 
-    // Link the credential
-    final cred = EmailAuthProvider.credential(email: syntheticEmail, password: password);
-    await _auth.currentUser!.linkWithCredential(cred);
+    try {
+      // Link the credential
+      final cred = EmailAuthProvider.credential(email: syntheticEmail, password: password);
+      await _auth.currentUser!.linkWithCredential(cred);
 
-    // Store username mapping
-    final uid = _auth.currentUser!.uid;
-    await FirebaseFirestore.instance.doc('users/$uid').update({
-      'username': uname,
-    });
-    
-    await nameDoc.set({'uid': uid}); // map username -> uid
+      // Store username mapping
+      final uid = _auth.currentUser!.uid;
+      await FirebaseFirestore.instance.doc('users/$uid').update({
+        'username': uname,
+      });
+      
+      await nameDoc.set({'uid': uid}); // map username -> uid
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'That username is already taken.';
+          break;
+        case 'weak-password':
+          message = 'Password must be at least 6 characters.';
+          break;
+        case 'invalid-email':
+          message = 'Please choose a valid username.';
+          break;
+        case 'credential-already-in-use':
+          message = 'This username is already linked to another account.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          message = 'An unexpected error occurred. Please try again.';
+      }
+      throw Exception(message);
+    }
   }
 
   /// Email/Password sign-in (when logged out) - kept for backward compatibility

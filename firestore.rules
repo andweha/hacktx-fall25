@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    /* Helpers */
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function hasOnlyFields(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    /* =========================  USER PROFILES  ========================= */
+    /* Private, full user data. Only the owner may read or write. */
+    match /user_profiles/{uid} {
+      allow read, create, update, delete: if isOwner(uid);
+
+      /* Friend requests stored under each user */
+      match /friendRequests/{reqId} {
+        /* Create a pending request addressed to {uid} */
+        allow create: if signedIn()
+          && hasOnlyFields(['fromUid','toUid','status','createdAt'])
+          && request.resource.data.fromUid == request.auth.uid
+          && request.resource.data.toUid == uid
+          && request.resource.data.status == 'pending';
+
+        /* Owner may read, update status, or delete */
+        allow read, update, delete: if isOwner(uid)
+          && (
+               request.method != 'update' ||
+               request.resource.data.diff(resource.data)
+                 .changedKeys().hasOnly(['status']) &&
+               request.resource.data.status in ['accepted','rejected']
+             );
+      }
+    }
+
+    /* =========================  FRIENDSHIPS  ========================== */
+    /* Each doc has: { members: [uidA, uidB], createdAt } */
+    match /friendships/{friendshipId} {
+      allow read: if signedIn()
+        && request.auth.uid in resource.data.members;
+
+      allow create: if signedIn()
+        && hasOnlyFields(['members','createdAt'])
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 2
+        && request.auth.uid in request.resource.data.members;
+
+      allow delete: if signedIn()
+        && request.auth.uid in resource.data.members;
+
+      allow update: if false;
+    }
+
+    /* ========================  PUBLIC PROFILES  ======================== */
+    /* Lightweight display data. Any signed-in user can read. */
+    match /public_profiles/{uid} {
+      allow read: if signedIn();
+
+      /* Owner writes, and username must be reserved for this uid */
+      allow create, update: if isOwner(uid)
+        && hasOnlyFields(['displayName','username','photoURL','updatedAt'])
+        && (
+             request.method == 'create' ||
+             request.resource.data.diff(resource.data).changedKeys()
+               .hasOnly(['displayName','username','photoURL','updatedAt'])
+           )
+        && get(/databases/$(db)/documents/usernames/
+               $(request.resource.data.username)).data.uid == uid;
+
+      allow delete: if isOwner(uid);
+    }
+
+    /* ===========================  USERNAMES  =========================== */
+    /* Maps normalized username -> uid. Use lowercase on the client. */
+    match /usernames/{name} {
+      allow read: if signedIn();
+
+      /* Create only if free. Only the caller can claim it. */
+      allow create: if signedIn()
+        && !exists(/databases/$(db)/documents/usernames/$(name))
+        && hasOnlyFields(['uid','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        /* Optional format guard: 3–30 chars, a-z, 0-9, ., _ */
+        && name.matches('^[a-z0-9._]{3,30}$');
+
+      /* Keep mapping stable. No deletes from clients. */
+      allow update: if signedIn()
+        && request.resource.data.uid == resource.data.uid
+        && hasOnlyFields(['uid','createdAt']);
+
+      allow delete: if false;
+    }
+
+    /* ============================== BOARDS ============================= */
+    /* Per-user challenge boards. Keyed by uid. Owner only. */
+    match /boards/{uid} {
+      allow read, write: if isOwner(uid);
+
+      /* Apply same ownership to every nested doc */
+      match /{sub=**}/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    /* ============================ USERS COLLECTION ===================== */
+    /* Additional users collection for friend codes and friend lists */
+    match /users/{uid} {
+      /* Owner can read/write their own user document */
+      allow read, write: if isOwner(uid);
+      
+      /* Allow reading other users' public data for friend lookups */
+      allow read: if signedIn();
+    }
+
+    /* ============================ PUBLIC DATA ========================== */
+    /* Optional: app config or catalogs that any signed-in user may read. */
+    match /app_public/{docId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    /* ============================ DENY REST ============================ */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
