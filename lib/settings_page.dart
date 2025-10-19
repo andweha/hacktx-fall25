@@ -320,7 +320,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 24),
                         const SizedBox(height: 16),
                         Row(
-                          children: [
+        children: [
                             Expanded(
                               child: Container(
                                 decoration: BoxDecoration(
@@ -339,11 +339,11 @@ class _SettingsPageState extends State<SettingsPage> {
                                   ],
                                 ),
                                 child: OutlinedButton.icon(
-                                  onPressed: () async {
+                onPressed: () async {
                                     await Clipboard.setData(
                                         ClipboardData(text: uid));
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
                                             'Friend code copied: $uidShort'),
