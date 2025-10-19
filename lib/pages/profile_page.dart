@@ -1,8 +1,11 @@
+// lib/pages/profile_page.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Clipboard
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'sign_in_page.dart'; // <-- NEW: navigate to the sign-in/upgrade screen
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -69,7 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header card
+              // Header card + name editor
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -130,10 +133,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                         SetOptions(merge: true),
                                       );
 
-                                      // 2) Also update Auth user displayName so it appears in the Users details panel
+                                      // 2) Also update Auth user displayName
                                       final user = FirebaseAuth.instance.currentUser!;
                                       await user.updateDisplayName(name);
-                                      await user.reload(); // refresh local cache
+                                      await user.reload();
 
                                       setState(() => _saving = false);
                                       if (!mounted) return;
@@ -181,7 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           await FirebaseAuth.instance.currentUser!.linkWithPopup(provider);
                                           await profRef.set({'anon': false}, SetOptions(merge: true));
 
-                                          // Optional: keep your Firestore displayName as the Auth name after linking
+                                          // Keep Firestore name as Auth name after linking (optional)
                                           final name = (await profRef.get()).data()?['displayName'];
                                           if (name is String && name.isNotEmpty) {
                                             await FirebaseAuth.instance.currentUser!.updateDisplayName(name);
@@ -210,6 +213,18 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // NEW: Navigate to the dedicated sign-in/upgrade screen
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SignInPage()),
+                          );
+                        },
+                        icon: const Icon(Icons.login),
+                        label: const Text('Sign in / Manage Account'),
                       ),
                     ],
                   ),
@@ -244,7 +259,7 @@ class _ProfilePageState extends State<ProfilePage> {
       'prefs': {},
     }, SetOptions(merge: true));
 
-    // Also set the Auth displayName so it appears in Auth → Users (details panel)
+    // Also set the Auth displayName so it appears in Auth → Users (details pane)
     await user.updateDisplayName(uname);
     await user.reload();
   }

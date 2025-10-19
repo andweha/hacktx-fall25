@@ -1,3 +1,4 @@
+// lib/mainboard_page.dart
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -229,11 +230,42 @@ class _MainBoardPageState extends State<MainBoardPage> {
                                         : Icons.check_circle_outline,
                                   ),
                                   onPressed: () async {
-                                    await BoardService.toggle(
-                                      index,
-                                      rawCells,
-                                    ); // write to Firestore
+                                    // 1) Simulate the toggle locally to see if board will be complete
+                                    final simulated =
+                                        List<Map<String, dynamic>>.from(
+                                          rawCells,
+                                        );
+                                    final newCell = Map<String, dynamic>.from(
+                                      simulated[index],
+                                    );
+                                    final toggledDone =
+                                        newCell['status'] != 'done';
+                                    newCell['status'] = toggledDone
+                                        ? 'done'
+                                        : 'open';
+                                    simulated[index] = newCell;
+
+                                    final completedNow = _isBoardCompleted(
+                                      _tasksFrom(simulated),
+                                    );
+
+                                    // Show only on transition false -> true
+                                    final shouldCelebrate =
+                                        !boardCompleted && completedNow;
+
+                                    // 2) Persist
+                                    await BoardService.toggle(index, rawCells);
+
+                                    // 3) Close this sheet first
                                     if (mounted) Navigator.pop(context);
+
+                                    // 4) After pop animation, celebrate if needed
+                                    if (shouldCelebrate) {
+                                      await Future.delayed(
+                                        const Duration(milliseconds: 250),
+                                      );
+                                      if (mounted) _showCelebrationDialog();
+                                    }
                                   },
                                   label: Text(
                                     done ? 'Mark Incomplete' : 'Mark Complete',
@@ -378,23 +410,28 @@ class _MainBoardPageState extends State<MainBoardPage> {
         final tasks = _tasksFrom(cells);
         final isCompleted = _isBoardCompleted(tasks);
 
-        // reflect completion state after build, if changed
+        // Keep state in sync, but don't show the dialog from here.
         if (isCompleted != boardCompleted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             setState(() => boardCompleted = isCompleted);
-            if (isCompleted) _showCelebrationDialog();
           });
         }
 
-        const double spacing = 18;
+        const double outerHPad = 24.0;
+        const double outerVPad = 12.0;
+        const double spacing = 18.0;
         const int cols = 3;
+        const int rows = 3;
 
         return Scaffold(
           backgroundColor: const Color(0xFFFFFAFA),
           body: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: outerHPad,
+                vertical: outerVPad,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -409,28 +446,66 @@ class _MainBoardPageState extends State<MainBoardPage> {
                       semanticsLabel: 'App logo',
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    boardCompleted
+                        ? 'Three in a row, nice work!'
+                        : 'Tap a tile once you finish the task.',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF7A6F62),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 24),
+
+                  // Fixed-height responsive grid that always fits 3x3
                   Expanded(
-                    child: GridView.builder(
-                      padding: EdgeInsets.zero,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: tasks.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: cols,
-                            crossAxisSpacing: spacing,
-                            mainAxisSpacing: spacing,
-                            childAspectRatio: 0.85,
-                          ),
-                      itemBuilder: (context, index) {
-                        final task = tasks[index];
-                        final palette = task.completed
-                            ? _completedPaletteFor(index, task)
-                            : _greyPalette;
-                        return _TaskTile(
-                          task: task,
-                          palette: palette,
-                          onTap: () => _showTaskDialog(index, cells),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double gridW = constraints.maxWidth;
+                        final double gridH = constraints.maxHeight;
+
+                        final double tileW =
+                            (gridW - spacing * (cols - 1)) / cols;
+                        final double tileH =
+                            (gridH - spacing * (rows - 1)) / rows;
+
+                        final double safeTileW = tileW.clamp(
+                          60.0,
+                          double.infinity,
+                        );
+                        final double safeTileH = tileH.clamp(
+                          60.0,
+                          double.infinity,
+                        );
+                        final double childAspectRatio =
+                            (safeTileW > 0 && safeTileH > 0)
+                            ? safeTileW / safeTileH
+                            : 1.0;
+
+                        return GridView.builder(
+                          padding: EdgeInsets.zero,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: tasks.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: cols,
+                                crossAxisSpacing: spacing,
+                                mainAxisSpacing: spacing,
+                                childAspectRatio: childAspectRatio,
+                              ),
+                          itemBuilder: (context, index) {
+                            final task = tasks[index];
+                            final palette = task.completed
+                                ? _completedPaletteFor(index, task)
+                                : _greyPalette;
+                            return _TaskTile(
+                              task: task,
+                              palette: palette,
+                              onTap: () => _showTaskDialog(index, cells),
+                            );
+                          },
                         );
                       },
                     ),
@@ -538,7 +613,7 @@ class _TaskTileState extends State<_TaskTile> {
                     child: Text(
                       widget.task.title,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: textColor,
