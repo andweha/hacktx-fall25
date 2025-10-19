@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/board_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class MainBoardPage extends StatefulWidget {
   const MainBoardPage({super.key});
@@ -12,14 +13,19 @@ class MainBoardPage extends StatefulWidget {
 }
 
 class _MainBoardPageState extends State<MainBoardPage> {
-  static const _TilePalette _greyPalette =
-      _TilePalette(top: Color(0xFFDCD4BB), bottom: Color(0xFFB6AB90));
+  static const _TilePalette _greyPalette = _TilePalette(
+    top: Color(0xFFDCD4BB),
+    bottom: Color(0xFFB6AB90),
+  );
   static const List<_TilePalette> _completedPalettes = [
     _TilePalette(top: Color(0xFFCFE7F5), bottom: Color(0xFFAAC5D9)), // blue
     _TilePalette(top: Color(0xFFCDEDE0), bottom: Color(0xFFA7CCBD)), // mint
     _TilePalette(top: Color(0xFFF7E6D4), bottom: Color(0xFFE1C4A3)), // peach
     _TilePalette(top: Color(0xFFE4DDF6), bottom: Color(0xFFBFB6D6)), // lavender
-    _TilePalette(top: Color(0xFFF6F1D6), bottom: Color(0xFFD9CCA3)), // light gold
+    _TilePalette(
+      top: Color(0xFFF6F1D6),
+      bottom: Color(0xFFD9CCA3),
+    ), // light gold
     _TilePalette(top: Color(0xFFDFF2F2), bottom: Color(0xFFB8D2D1)), // aqua
   ];
 
@@ -94,7 +100,8 @@ class _MainBoardPageState extends State<MainBoardPage> {
   List<Task> _tasksFrom(List rawCells) {
     return List.generate(9, (i) {
       final m = Map<String, dynamic>.from(rawCells[i]);
-      final title = (m['title'] as String?) ?? taskDataset[i % taskDataset.length];
+      final title =
+          (m['title'] as String?) ?? taskDataset[i % taskDataset.length];
       final isDone = (m['status'] as String?) == 'done';
       return Task(title: title, completed: isDone);
     });
@@ -112,10 +119,18 @@ class _MainBoardPageState extends State<MainBoardPage> {
       if (row.every((t) => t.completed)) won = true;
     }
     for (int c = 0; c < 3; c++) {
-      if (grid[0][c].completed && grid[1][c].completed && grid[2][c].completed) won = true;
+      if (grid[0][c].completed &&
+          grid[1][c].completed &&
+          grid[2][c].completed) {
+        won = true;
+      }
     }
-    if ((grid[0][0].completed && grid[1][1].completed && grid[2][2].completed) ||
-        (grid[0][2].completed && grid[1][1].completed && grid[2][0].completed)) {
+    if ((grid[0][0].completed &&
+            grid[1][1].completed &&
+            grid[2][2].completed) ||
+        (grid[0][2].completed &&
+            grid[1][1].completed &&
+            grid[2][0].completed)) {
       won = true;
     }
     return won;
@@ -152,7 +167,10 @@ class _MainBoardPageState extends State<MainBoardPage> {
             Align(
               alignment: Alignment.bottomCenter,
               child: SlideTransition(
-                position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(curved),
+                position: Tween(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(curved),
                 child: FractionallySizedBox(
                   heightFactor: 0.7,
                   widthFactor: 1,
@@ -163,9 +181,12 @@ class _MainBoardPageState extends State<MainBoardPage> {
                       child: Material(
                         elevation: 12,
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
+                        borderRadius: BorderRadius.circular(15),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 28,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
@@ -189,7 +210,9 @@ class _MainBoardPageState extends State<MainBoardPage> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                done ? 'Need to change your mind?' : 'Did you finish this task?',
+                                done
+                                    ? 'Need to change your mind?'
+                                    : 'Did you finish this task?',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   color: Color(0xFF7A6F62),
@@ -200,18 +223,36 @@ class _MainBoardPageState extends State<MainBoardPage> {
                               SizedBox(
                                 width: double.infinity,
                                 child: FilledButton.icon(
-                                  icon: Icon(done ? Icons.undo : Icons.check_circle_outline),
+                                  icon: Icon(
+                                    done
+                                        ? Icons.undo
+                                        : Icons.check_circle_outline,
+                                  ),
                                   onPressed: () async {
-                                    await BoardService.toggle(index, rawCells); // write to Firestore
+                                    await BoardService.toggle(
+                                      index,
+                                      rawCells,
+                                    ); // write to Firestore
                                     if (mounted) Navigator.pop(context);
                                   },
-                                  label: Text(done ? 'Mark Incomplete' : 'Mark Complete'),
+                                  label: Text(
+                                    done ? 'Mark Incomplete' : 'Mark Complete',
+                                  ),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: done ? const Color(0xFFB59F84) : const Color(0xFFEABF4E),
+                                    backgroundColor: done
+                                        ? const Color(0xFFB59F84)
+                                        : const Color(0xFFEABF4E),
                                     foregroundColor: const Color(0xFF4B4034),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -221,9 +262,15 @@ class _MainBoardPageState extends State<MainBoardPage> {
                                 child: OutlinedButton(
                                   onPressed: () => Navigator.pop(context),
                                   style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: Color(0xFFE0D9CC)),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                    side: const BorderSide(
+                                      color: Color(0xFFE0D9CC),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
                                   ),
                                   child: const Text(
                                     'Cancel',
@@ -249,7 +296,10 @@ class _MainBoardPageState extends State<MainBoardPage> {
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutQuad,
+          ),
           child: child,
         );
       },
@@ -263,7 +313,9 @@ class _MainBoardPageState extends State<MainBoardPage> {
       builder: (context) {
         return Dialog(
           backgroundColor: Colors.green.shade50,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -271,19 +323,33 @@ class _MainBoardPageState extends State<MainBoardPage> {
               children: [
                 const Icon(Icons.celebration, size: 70, color: Colors.green),
                 const SizedBox(height: 16),
-                const Text('Tasks Done Today!',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green)),
+                const Text(
+                  'Tasks Done Today!',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
                 const SizedBox(height: 12),
-                const Text('You’ve completed 3 in a row! Keep up the streak!',
-                    textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+                const Text(
+                  'You’ve completed 3 in a row! Keep up the streak!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text('Awesome!'),
                 ),
@@ -301,10 +367,14 @@ class _MainBoardPageState extends State<MainBoardPage> {
       stream: BoardService.stream(),
       builder: (context, snap) {
         if (!snap.hasData || !snap.data!.exists) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
-        final cells = List<Map<String, dynamic>>.from(snap.data!.data()!['cells']);
+        final cells = List<Map<String, dynamic>>.from(
+          snap.data!.data()!['cells'],
+        );
         final tasks = _tasksFrom(cells);
         final isCompleted = _isBoardCompleted(tasks);
 
@@ -326,25 +396,18 @@ class _MainBoardPageState extends State<MainBoardPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 12),
-                  Text(
-                    boardCompleted ? 'Tasks Done Today!' : 'Main Board',
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF4B4034),
+                  SizedBox(
+                    height: 48,
+                    width: 160,
+                    child: SvgPicture.asset(
+                      'assets/svg/logo.svg',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      semanticsLabel: 'App logo',
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    boardCompleted ? 'Three in a row—nice work!' : 'Tap a tile once you finish the task.',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF7A6F62),
-                    ),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   Expanded(
@@ -352,12 +415,13 @@ class _MainBoardPageState extends State<MainBoardPage> {
                       padding: EdgeInsets.zero,
                       physics: const BouncingScrollPhysics(),
                       itemCount: tasks.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: cols,
-                        crossAxisSpacing: spacing,
-                        mainAxisSpacing: spacing,
-                        childAspectRatio: 0.85,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
+                            crossAxisSpacing: spacing,
+                            mainAxisSpacing: spacing,
+                            childAspectRatio: 0.85,
+                          ),
                       itemBuilder: (context, index) {
                         final task = tasks[index];
                         final palette = task.completed
@@ -447,7 +511,7 @@ class _TaskTileState extends State<_TaskTile> {
                   duration: duration,
                   decoration: BoxDecoration(
                     color: widget.palette.bottom,
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
@@ -457,13 +521,18 @@ class _TaskTileState extends State<_TaskTile> {
                 top: _pressed ? pressedShift : 0,
                 left: 0,
                 right: 0,
-                bottom: _pressed ? baseShadowOffset - pressedShift : baseShadowOffset,
+                bottom: _pressed
+                    ? baseShadowOffset - pressedShift
+                    : baseShadowOffset,
                 child: AnimatedContainer(
                   duration: duration,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.palette.top,
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
                     child: Text(
