@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "711557722631",
+    "project_id": "hacktx-fall25-e9013",
+    "storage_bucket": "hacktx-fall25-e9013.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:711557722631:android:9cdda9fb78ae1a50b630a2",
+        "android_client_info": {
+          "package_name": "com.example.hack_tx_fall_25"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "711557722631-b5u64ru7o9cpis5g7o0h1ekvv6ilt0en.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0pdgK7uoS5R3Dxx5cpidFMuElVivzPHM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "711557722631-b5u64ru7o9cpis5g7o0h1ekvv6ilt0en.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

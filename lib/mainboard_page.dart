@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/board_service.dart';
@@ -10,6 +12,17 @@ class MainBoardPage extends StatefulWidget {
 }
 
 class _MainBoardPageState extends State<MainBoardPage> {
+  static const _TilePalette _greyPalette =
+      _TilePalette(top: Color(0xFFDCD4BB), bottom: Color(0xFFB6AB90));
+  static const List<_TilePalette> _completedPalettes = [
+    _TilePalette(top: Color(0xFFCFE7F5), bottom: Color(0xFFAAC5D9)), // blue
+    _TilePalette(top: Color(0xFFCDEDE0), bottom: Color(0xFFA7CCBD)), // mint
+    _TilePalette(top: Color(0xFFF7E6D4), bottom: Color(0xFFE1C4A3)), // peach
+    _TilePalette(top: Color(0xFFE4DDF6), bottom: Color(0xFFBFB6D6)), // lavender
+    _TilePalette(top: Color(0xFFF6F1D6), bottom: Color(0xFFD9CCA3)), // light gold
+    _TilePalette(top: Color(0xFFDFF2F2), bottom: Color(0xFFB8D2D1)), // aqua
+  ];
+
   final List<String> taskDataset = [
     'Wake up before 7 AM and get out of bed immediately',
     'Meditate in silence for 15 minutes',
@@ -72,6 +85,12 @@ class _MainBoardPageState extends State<MainBoardPage> {
     BoardService.ensureSeed(); // seed 3x3 if missing
   }
 
+  _TilePalette _completedPaletteFor(int index, Task task) {
+    final seed = task.title.hashCode ^ index;
+    final paletteIndex = seed.abs() % _completedPalettes.length;
+    return _completedPalettes[paletteIndex];
+  }
+
   List<Task> _tasksFrom(List rawCells) {
     return List.generate(9, (i) {
       final m = Map<String, dynamic>.from(rawCells[i]);
@@ -107,45 +126,131 @@ class _MainBoardPageState extends State<MainBoardPage> {
     final title = (cell['title'] as String?) ?? 'Task';
     final done = (cell['status'] as String?) == 'done';
 
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 20),
-                const Text('Did you finish this task?', style: TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    await BoardService.toggle(index, rawCells); // write to Firestore
-                    if (mounted) Navigator.pop(context);
-                  },
-                  icon: Icon(done ? Icons.undo : Icons.check_circle_outline),
-                  label: Text(done ? 'Mark Incomplete' : 'Mark Complete'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: done ? Colors.red : Colors.green,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      barrierLabel: 'Task details',
+      barrierColor: Colors.black.withOpacity(0.1),
+      transitionDuration: const Duration(milliseconds: 280),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(color: Colors.black.withOpacity(0.12)),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SlideTransition(
+                position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(curved),
+                child: FractionallySizedBox(
+                  heightFactor: 0.7,
+                  widthFactor: 1,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      child: Material(
+                        elevation: 12,
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0D9CC),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF4B4034),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                done ? 'Need to change your mind?' : 'Did you finish this task?',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF7A6F62),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const Spacer(),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  icon: Icon(done ? Icons.undo : Icons.check_circle_outline),
+                                  onPressed: () async {
+                                    await BoardService.toggle(index, rawCells); // write to Firestore
+                                    if (mounted) Navigator.pop(context);
+                                  },
+                                  label: Text(done ? 'Mark Incomplete' : 'Mark Complete'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: done ? const Color(0xFFB59F84) : const Color(0xFFEABF4E),
+                                    foregroundColor: const Color(0xFF4B4034),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Color(0xFFE0D9CC)),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  ),
+                                  child: const Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF7A6F62),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+          child: child,
         );
       },
     );
@@ -212,77 +317,63 @@ class _MainBoardPageState extends State<MainBoardPage> {
           });
         }
 
-        // ---- Responsive grid that fits all 9 tiles on screen ----
-        const double pad = 12;                // outer padding
-        const double spacing = 8;             // tile spacing
-        const int cols = 3;                   // 3x3 board
-        const int rows = 3;
+        const double spacing = 18;
+        const int cols = 3;
 
         return Scaffold(
-          backgroundColor: boardCompleted ? Colors.green.shade100 : Colors.grey.shade100,
-          appBar: AppBar(
-            backgroundColor: boardCompleted ? Colors.green : Colors.blueAccent,
-            title: Text(boardCompleted ? 'Tasks Done Today!' : 'Main Board',
-                style: const TextStyle(color: Colors.white)),
-            centerTitle: true,
-          ),
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              // available width/height for the grid (inside padding)
-              final gridW = constraints.maxWidth - pad * 2;
-              final gridH = constraints.maxHeight - pad * 2;
-
-              // compute tile sizes so 3 rows & 3 cols fit exactly
-              final tileW = (gridW - spacing * (cols - 1)) / cols;
-              final tileH = (gridH - spacing * (rows - 1)) / rows;
-
-              // GridView expects width/height ratio
-              final childAspectRatio = (tileW > 0 && tileH > 0)
-                  ? tileW / tileH
-                  : 1.0;
-
-              return Padding(
-                padding: const EdgeInsets.all(pad),
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(), // everything fits – no scroll
-                  itemCount: tasks.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    crossAxisSpacing: spacing,
-                    mainAxisSpacing: spacing,
-                    childAspectRatio: childAspectRatio,
+          backgroundColor: const Color(0xFFFFFAFA),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 12),
+                  Text(
+                    boardCompleted ? 'Tasks Done Today!' : 'Main Board',
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4B4034),
+                    ),
                   ),
-                  itemBuilder: (context, index) {
-                    final t = tasks[index];
-                    return GestureDetector(
-                      onTap: () => _showTaskDialog(index, cells),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        decoration: BoxDecoration(
-                          color: t.completed ? Colors.green.shade300 : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2))
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Center(
-                          child: Text(
-                            t.title,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              decoration: t.completed ? TextDecoration.lineThrough : null,
-                              color: t.completed ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                        ),
+                  const SizedBox(height: 8),
+                  Text(
+                    boardCompleted ? 'Three in a row—nice work!' : 'Tap a tile once you finish the task.',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF7A6F62),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: EdgeInsets.zero,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: tasks.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: spacing,
+                        mainAxisSpacing: spacing,
+                        childAspectRatio: 0.85,
                       ),
-                    );
-                  },
-                ),
-              );
-            },
+                      itemBuilder: (context, index) {
+                        final task = tasks[index];
+                        final palette = task.completed
+                            ? _completedPaletteFor(index, task)
+                            : _greyPalette;
+                        return _TaskTile(
+                          task: task,
+                          palette: palette,
+                          onTap: () => _showTaskDialog(index, cells),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -294,4 +385,103 @@ class Task {
   final String title;
   final bool completed;
   const Task({required this.title, required this.completed});
+}
+
+class _TilePalette {
+  final Color top;
+  final Color bottom;
+  const _TilePalette({required this.top, required this.bottom});
+}
+
+class _TaskTile extends StatefulWidget {
+  final Task task;
+  final _TilePalette palette;
+  final VoidCallback onTap;
+
+  const _TaskTile({
+    required this.task,
+    required this.palette,
+    required this.onTap,
+  });
+
+  @override
+  State<_TaskTile> createState() => _TaskTileState();
+}
+
+class _TaskTileState extends State<_TaskTile> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const Color textColor = Color(0xFF4B4034);
+    const duration = Duration(milliseconds: 140);
+    const double baseShadowOffset = 18.0;
+    const double pressedShift = 10.0;
+
+    return GestureDetector(
+      onTap: () {
+        _setPressed(false);
+        widget.onTap();
+      },
+      onTapDown: (_) => _setPressed(true),
+      onTapUp: (_) => _setPressed(false),
+      onTapCancel: () => _setPressed(false),
+      child: LayoutBuilder(
+        builder: (context, _) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedPositioned(
+                duration: duration,
+                curve: Curves.easeOut,
+                top: baseShadowOffset,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: AnimatedContainer(
+                  duration: duration,
+                  decoration: BoxDecoration(
+                    color: widget.palette.bottom,
+                    borderRadius: BorderRadius.circular(26),
+                  ),
+                ),
+              ),
+              AnimatedPositioned(
+                duration: duration,
+                curve: Curves.easeOut,
+                top: _pressed ? pressedShift : 0,
+                left: 0,
+                right: 0,
+                bottom: _pressed ? baseShadowOffset - pressedShift : baseShadowOffset,
+                child: AnimatedContainer(
+                  duration: duration,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: widget.palette.top,
+                    borderRadius: BorderRadius.circular(26),
+                  ),
+                  child: Center(
+                    child: Text(
+                      widget.task.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }

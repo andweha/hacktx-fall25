@@ -21,25 +21,13 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -60,6 +48,44 @@ class DefaultFirebaseOptions {
     authDomain: 'hacktx-fall25-e9013.firebaseapp.com',
     storageBucket: 'hacktx-fall25-e9013.firebasestorage.app',
     measurementId: 'G-TBR0PKL6MX',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyAtCXnaHEIb92tjT7PfE4YLlgsfPe7-7gk',
+    appId: '1:711557722631:ios:488e3ccd5cc4940ab630a2',
+    messagingSenderId: '711557722631',
+    projectId: 'hacktx-fall25-e9013',
+    storageBucket: 'hacktx-fall25-e9013.firebasestorage.app',
+    iosClientId: '711557722631-2u5snl29vl0cn7g3n7qften5ppg8n6bo.apps.googleusercontent.com',
+    iosBundleId: 'com.example.hackTxFall25',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyAtCXnaHEIb92tjT7PfE4YLlgsfPe7-7gk',
+    appId: '1:711557722631:ios:488e3ccd5cc4940ab630a2',
+    messagingSenderId: '711557722631',
+    projectId: 'hacktx-fall25-e9013',
+    storageBucket: 'hacktx-fall25-e9013.firebasestorage.app',
+    iosClientId: '711557722631-2u5snl29vl0cn7g3n7qften5ppg8n6bo.apps.googleusercontent.com',
+    iosBundleId: 'com.example.hackTxFall25',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyB0pdgK7uoS5R3Dxx5cpidFMuElVivzPHM',
+    appId: '1:711557722631:android:9cdda9fb78ae1a50b630a2',
+    messagingSenderId: '711557722631',
+    projectId: 'hacktx-fall25-e9013',
+    storageBucket: 'hacktx-fall25-e9013.firebasestorage.app',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyD7Oxn2YQysJC_vBh20I4kP6dd1rZNymeI',
+    appId: '1:711557722631:web:9d0c784f431a7b9db630a2',
+    messagingSenderId: '711557722631',
+    projectId: 'hacktx-fall25-e9013',
+    authDomain: 'hacktx-fall25-e9013.firebaseapp.com',
+    storageBucket: 'hacktx-fall25-e9013.firebasestorage.app',
+    measurementId: 'G-JS71PYXPT8',
   );
 
 }
