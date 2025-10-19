@@ -6,6 +6,7 @@ import 'pages/friends_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/mainboard_page.dart';
 import 'pages/feed_page.dart';
+import 'pages/profile_page.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -22,6 +23,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const MainBoardPage(),
     const FeedPage(),
     const FriendsPage(),
+    const ProfilePage(),
     const SettingsPage(),
   ];
 
@@ -119,6 +121,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: 'Friends',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
